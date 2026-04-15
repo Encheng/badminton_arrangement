@@ -14,7 +14,7 @@
         <div class="status-bar" aria-hidden="true"></div>
         <div class="hero__content">
           <p class="hero__eyebrow">管理模式</p>
-          <h1 class="hero__title">編輯本週名單</h1>
+          <h1 class="hero__title">編輯場次名單</h1>
           <p class="hero__meta">{{ sessionDateLabel }}</p>
         </div>
       </header>
@@ -87,6 +87,10 @@
           <p v-if="saveError" class="error-msg" role="alert">{{ saveError }}</p>
           <p v-if="saveSuccess" class="success-msg" role="status">已成功發布！</p>
         </form>
+
+        <button class="link-btn" @click="goToSessions">
+          管理所有場次（新增未來場次）
+        </button>
       </main>
     </template>
   </div>
@@ -94,19 +98,21 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app.js'
 import { getCurrentStreak } from '../utils/stats.js'
+import { getComingSaturday } from '../utils/date.js'
 import { api } from '../services/api.js'
 import MemberCheckItem from '../components/MemberCheckItem.vue'
 
-const store = useAppStore()
+const store  = useAppStore()
+const route  = useRoute()
+const router = useRouter()
 
-// 本週日期（下一個或本週 config.day_of_week）
+// 支援從場次頁帶入 ?date=YYYY-MM-DD，否則預設本週六
 const sessionDate = computed(() => {
-  const today = new Date()
-  // 找最近的場次日期，或使用今天
-  const existing = store.sessions.find(s => s.date >= today.toISOString().slice(0, 10))
-  return existing?.date ?? today.toISOString().slice(0, 10)
+  if (route.query.date) return route.query.date
+  return getComingSaturday()
 })
 
 const sessionDateLabel = computed(() => {
@@ -116,16 +122,18 @@ const sessionDateLabel = computed(() => {
   }).format(d)
 })
 
-// 預填本週已存在的出席名單
+// 預填指定日期已存在的出席名單
+const existingSession = computed(() =>
+  store.sessions.find(s => s.date === sessionDate.value) ?? null
+)
+
 const checkedIds = ref(new Set(
-  store.sessions
-    .find(s => s.date >= new Date().toISOString().slice(0, 10))
+  existingSession.value
     ?.attendances.filter(a => a.type === 'member').map(a => a.member_id) ?? []
 ))
 
 const guests = ref(
-  store.sessions
-    .find(s => s.date >= new Date().toISOString().slice(0, 10))
+  existingSession.value
     ?.attendances.filter(a => a.type === 'guest').map(a => ({
       name: a.name, guest_key: a.guest_key,
     })) ?? []
@@ -185,6 +193,10 @@ async function handleSave() {
   } finally {
     saving.value = false
   }
+}
+
+function goToSessions() {
+  router.push('/sessions')
 }
 </script>
 
@@ -276,4 +288,16 @@ async function handleSave() {
 
 .error-msg   { color: var(--error);      font-size: 13px; margin-top: 12px; text-align: center; }
 .success-msg { color: var(--secondary-variant); font-size: 13px; margin-top: 12px; text-align: center; font-weight: 600; }
+
+.link-btn {
+  display: block; width: 100%;
+  background: none; border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px; margin-top: 16px;
+  font-size: 14px; font-weight: 600;
+  color: var(--primary); cursor: pointer;
+  text-align: center; touch-action: manipulation;
+  transition: background 0.15s ease;
+}
+.link-btn:active { background: var(--surface-tinted, #f5f0ff); }
 </style>

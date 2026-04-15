@@ -24,7 +24,7 @@ const route  = useRoute()
 
 const tabs = [
   { path: '/',        icon: '🏸', label: '本週' },
-  { path: '/history', icon: '📋', label: '歷史' },
+  { path: '/sessions', icon: '📋', label: '場次' },
   { path: '/stats',   icon: '🏆', label: '榮譽' },
 ]
 

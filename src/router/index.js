@@ -4,7 +4,8 @@ import { useAppStore } from '../stores/app.js'
 
 const routes = [
   { path: '/',        component: () => import('../views/WeekView.vue') },
-  { path: '/history', component: () => import('../views/HistoryView.vue') },
+  { path: '/sessions', component: () => import('../views/SessionsView.vue') },
+  { path: '/history', redirect: '/sessions' },
   { path: '/stats',   component: () => import('../views/StatsView.vue') },
   { path: '/admin',   component: () => import('../views/AdminView.vue') },
 ]

@@ -7,6 +7,7 @@ export const useAppStore = defineStore('app', () => {
   const config   = ref({})
   const members  = ref([])
   const sessions = ref([])
+  const loading  = ref(true)
   const _token   = ref(null)
 
   const isAdmin = computed(() =>
@@ -21,16 +22,49 @@ export const useAppStore = defineStore('app', () => {
     _token.value = token
   }
 
-  async function init() {
-    const [cfg, mems, sess] = await Promise.all([
-      api.getConfig(),
-      api.getMembers(),
-      api.getSessions(),
-    ])
-    config.value   = cfg
-    members.value  = mems
-    sessions.value = sess
+  // Google Sheets 可能回傳非標準日期/時間格式，前端統一正規化
+  function _normalizeTime(val) {
+    if (typeof val === 'string' && val.includes('1899')) {
+      const d = new Date(val)
+      if (!isNaN(d)) {
+        return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0')
+      }
+    }
+    return val
   }
 
-  return { config, members, sessions, isAdmin, activeMembers, setAdminToken, init }
+  // "Sat Mar 21 2026 00:00:00 GMT+0800 (...)" → "2026-03-21"
+  function _normalizeDate(val) {
+    if (typeof val !== 'string') return val
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val // already YYYY-MM-DD
+    const d = new Date(val)
+    if (!isNaN(d)) {
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${y}-${m}-${day}`
+    }
+    return val
+  }
+
+  async function init() {
+    loading.value = true
+    try {
+      const [cfg, mems, sess] = await Promise.all([
+        api.getConfig(),
+        api.getMembers(),
+        api.getSessions(),
+      ])
+      if (cfg.time_start) cfg.time_start = _normalizeTime(cfg.time_start)
+      if (cfg.time_end)   cfg.time_end   = _normalizeTime(cfg.time_end)
+      sess.forEach(s => { s.date = _normalizeDate(s.date) })
+      config.value   = cfg
+      members.value  = mems
+      sessions.value = sess
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { config, members, sessions, loading, isAdmin, activeMembers, setAdminToken, init }
 })

@@ -17,8 +17,14 @@
 
     <!-- Sheet -->
     <main class="sheet">
+      <!-- 載入中 -->
+      <div v-if="store.loading" class="loading-state">
+        <div class="spinner" aria-label="載入中"></div>
+        <p class="loading-state__text">載入資料中…</p>
+      </div>
+
       <!-- 尚未設定 -->
-      <div v-if="!currentSession" class="empty-state">
+      <div v-else-if="!currentSession" class="empty-state">
         <p class="empty-state__icon">🏸</p>
         <p class="empty-state__title">本週名單尚未設定</p>
         <p class="empty-state__sub">管理員稍後會更新…</p>
@@ -52,32 +58,42 @@
 <script setup>
 import { computed } from 'vue'
 import { useAppStore } from '../stores/app.js'
+import { getComingSaturday } from '../utils/date.js'
 import AttendeeChip from '../components/AttendeeChip.vue'
 
 const store = useAppStore()
 
 const config = computed(() => store.config)
 
-const formattedDate = new Intl.DateTimeFormat('zh-TW', {
-  month: 'numeric', day: 'numeric', weekday: 'short',
-}).format(new Date())
+// 本週六日期（固定週六場次）
+const saturdayDate = getComingSaturday()
 
-// 找最近未來（或今日）的場次
-const currentSession = computed(() => {
-  const today = new Date().toISOString().slice(0, 10)
-  return store.sessions.find(s => s.date >= today) ??
-         store.sessions[0] ?? null
-})
+// 找本週六（或最近未來）的場次
+const currentSession = computed(() =>
+  store.sessions.find(s => s.date === saturdayDate) ??
+  store.sessions.find(s => s.date >= saturdayDate) ??
+  null
+)
 
 const attendees = computed(() =>
   currentSession.value?.attendances ?? []
 )
 
+// hero 大標：永遠顯示本週六日期
 const sessionDateLabel = computed(() => {
-  if (!currentSession.value) return '—'
-  const d = new Date(currentSession.value.date + 'T00:00:00')
+  const target = currentSession.value?.date ?? saturdayDate
+  const d = new Date(target + 'T00:00:00')
   return new Intl.DateTimeFormat('zh-TW', {
     month: 'numeric', day: 'numeric', weekday: 'short',
+  }).format(d)
+})
+
+// status bar 右上角
+const formattedDate = computed(() => {
+  const target = currentSession.value?.date ?? saturdayDate
+  const d = new Date(target + 'T00:00:00')
+  return new Intl.DateTimeFormat('zh-TW', {
+    year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short',
   }).format(d)
 })
 
@@ -119,6 +135,30 @@ const lastUpdatedLabel = computed(() => {
   border-radius: 24px 24px 0 0;
   padding: 20px 16px calc(80px + env(safe-area-inset-bottom, 0px));
   margin-top: -20px;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 48px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.loading-state__text {
+  font-size: 14px;
+  color: var(--text-tertiary);
+}
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(98, 0, 238, 0.15);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .empty-state {

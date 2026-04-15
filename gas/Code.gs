@@ -29,9 +29,10 @@ function doPost(e) {
   }
   try {
     let data
-    if      (action === 'saveSession')  data = _saveSession(ss, body)
-    else if (action === 'saveMember')   data = _saveMember(ss, body)
-    else if (action === 'promoteGuest') data = _promoteGuest(ss, body)
+    if      (action === 'saveSession')   data = _saveSession(ss, body)
+    else if (action === 'deleteSession') data = _deleteSession(ss, body)
+    else if (action === 'saveMember')    data = _saveMember(ss, body)
+    else if (action === 'promoteGuest')  data = _promoteGuest(ss, body)
     else return _json({ status: 'error', message: 'Unknown action: ' + action })
     return _json({ status: 'ok', data })
   } catch (err) {
@@ -45,10 +46,33 @@ function _json(obj) {
     .setMimeType(ContentService.MimeType.JSON)
 }
 
+// Google Sheets getValues() 回傳的 Date 不一定通過 instanceof Date
+// 用 getTime 方法判斷更可靠
+function _isDate(val) {
+  return val && typeof val.getTime === 'function' && !isNaN(val.getTime())
+}
+
+function _formatDate(val) {
+  return _isDate(val) ? Utilities.formatDate(val, 'Asia/Taipei', 'yyyy-MM-dd') : String(val)
+}
+
+function _formatTime(val) {
+  return _isDate(val) ? Utilities.formatDate(val, 'Asia/Taipei', 'HH:mm') : String(val)
+}
+
 function _getConfig(ss, includeToken) {
   const rows   = ss.getSheetByName('config').getDataRange().getValues()
   const config = {}
-  rows.forEach(function(row) { if (row[0]) config[row[0]] = row[1] })
+  rows.forEach(function(row) {
+    if (row[0]) {
+      var val = row[1]
+      // Google Sheets 會把時間欄位轉為 Date 物件（epoch 1899-12-30），需轉回 HH:mm
+      if (_isDate(val)) {
+        val = _formatTime(val)
+      }
+      config[row[0]] = val
+    }
+  })
   if (!includeToken) delete config.admin_token
   return config
 }
@@ -66,9 +90,7 @@ function _getSessions(ss) {
 
   var sessionMap = {}
   var sessions = sessionRows.map(function(r) {
-    var date = r[1] instanceof Date
-      ? Utilities.formatDate(r[1], 'Asia/Taipei', 'yyyy-MM-dd')
-      : String(r[1])
+    var date = _formatDate(r[1])
     var s = { session_id: r[0], date: date, created_at: String(r[2] || ''), note: r[3] || '', attendances: [] }
     sessionMap[r[0]] = s
     return s
@@ -96,9 +118,7 @@ function _saveSession(ss, body) {
   var rows      = sessSheet.getDataRange().getValues().slice(1)
   var sessionId = null
   rows.forEach(function(r) {
-    var d = r[1] instanceof Date
-      ? Utilities.formatDate(r[1], 'Asia/Taipei', 'yyyy-MM-dd')
-      : String(r[1])
+    var d = _formatDate(r[1])
     if (d === date) sessionId = r[0]
   })
   if (!sessionId) {
@@ -128,6 +148,33 @@ function _saveSession(ss, body) {
     ])
   })
   return { session_id: sessionId }
+}
+
+function _deleteSession(ss, body) {
+  var sessionId = body.session_id
+  if (!sessionId) throw new Error('Missing session_id')
+
+  var sessSheet = ss.getSheetByName('sessions')
+  var attSheet  = ss.getSheetByName('attendances')
+
+  // 刪除出席記錄
+  var attData   = attSheet.getDataRange().getValues()
+  var toDelete  = []
+  for (var i = 1; i < attData.length; i++) {
+    if (attData[i][1] === sessionId) toDelete.push(i + 1)
+  }
+  toDelete.reverse().forEach(function(row) { attSheet.deleteRow(row) })
+
+  // 刪除場次
+  var sessData = sessSheet.getDataRange().getValues()
+  for (var j = 1; j < sessData.length; j++) {
+    if (sessData[j][0] === sessionId) {
+      sessSheet.deleteRow(j + 1)
+      break
+    }
+  }
+
+  return { deleted: sessionId }
 }
 
 function _saveMember(ss, body) {
