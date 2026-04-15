@@ -1,0 +1,68 @@
+// src/utils/__tests__/badges.test.js
+import { describe, it, expect } from 'vitest'
+import { getBadges } from '../badges.js'
+
+function makeSession(date, memberIds) {
+  return {
+    session_id: `s-${date}`,
+    date,
+    attendances: memberIds.map(id => ({ member_id: id, name: id, type: 'member' })),
+  }
+}
+
+const members = [
+  { id: 'm1', name: 'Peter', active: true },
+  { id: 'm2', name: 'Andy',  active: true },
+]
+
+describe('getBadges', () => {
+  it('unlocks count_10 when member attended 10+ times', () => {
+    const sessions = Array.from({ length: 10 }, (_, i) =>
+      makeSession(`2026-0${Math.floor(i/4)+1}-${String((i%4)*7+1).padStart(2,'0')}`, ['m1'])
+    )
+    const badges = getBadges('m1', sessions, members)
+    expect(badges.find(b => b.id === 'count_10').unlocked).toBe(true)
+    expect(badges.find(b => b.id === 'count_20').unlocked).toBe(false)
+  })
+
+  it('unlocks streak_5 when member has 5 consecutive sessions', () => {
+    const sessions = [
+      makeSession('2026-03-22', ['m1']),
+      makeSession('2026-03-29', ['m1']),
+      makeSession('2026-04-05', ['m1']),
+      makeSession('2026-04-12', ['m1']),
+      makeSession('2026-04-19', ['m1']),
+    ]
+    const badges = getBadges('m1', sessions, members)
+    expect(badges.find(b => b.id === 'streak_5').unlocked).toBe(true)
+  })
+
+  it('does not unlock streak_5 when streak is broken', () => {
+    const sessions = [
+      makeSession('2026-03-22', ['m1']),
+      makeSession('2026-03-29', []),        // missed
+      makeSession('2026-04-05', ['m1']),
+      makeSession('2026-04-12', ['m1']),
+      makeSession('2026-04-19', ['m1']),
+    ]
+    const badges = getBadges('m1', sessions, members)
+    expect(badges.find(b => b.id === 'streak_5').unlocked).toBe(false)
+  })
+
+  it('unlocks annual_top for the member with most attendance this year', () => {
+    const sessions = [
+      makeSession('2026-04-05', ['m1', 'm2']),
+      makeSession('2026-04-12', ['m1']),
+      makeSession('2026-04-19', ['m1']),
+    ]
+    const m1Badges = getBadges('m1', sessions, members)
+    const m2Badges = getBadges('m2', sessions, members)
+    expect(m1Badges.find(b => b.id === 'annual_top').unlocked).toBe(true)
+    expect(m2Badges.find(b => b.id === 'annual_top').unlocked).toBe(false)
+  })
+
+  it('returns all 8 badge definitions for any member', () => {
+    const badges = getBadges('m1', [], members)
+    expect(badges).toHaveLength(8)
+  })
+})
