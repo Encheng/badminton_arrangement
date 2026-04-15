@@ -1,10 +1,11 @@
+// src/main.js
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
-// router imported and registered in Task 6 (src/router/index.js)
+import router from './router/index.js'
+import './assets/main.css'
 
 const app = createApp(App)
-
 app.use(createPinia())
-
+app.use(router)
 app.mount('#app')

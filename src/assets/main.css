@@ -1,0 +1,47 @@
+/* src/assets/main.css */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --primary:           #6200EE;
+  --primary-variant:   #3700B3;
+  --secondary:         #03DAC6;
+  --secondary-variant: #018786;
+  --error:             #B00020;
+  --background:        #FFFFFF;
+  --surface:           #FFFFFF;
+  --on-primary:        #FFFFFF;
+  --on-secondary:      #000000;
+  --on-error:          #FFFFFF;
+
+  --text-primary:      #111827;
+  --text-secondary:    #555555;
+  --text-tertiary:     #888888;
+  --border:            rgba(0, 0, 0, 0.08);
+  --surface-tinted:    #f7f4ff;
+  --surface-secondary: #f0fdfc;
+
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  background: var(--background);
+  color: var(--text-primary);
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100dvh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
