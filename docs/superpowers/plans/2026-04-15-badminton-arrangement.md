@@ -24,35 +24,37 @@ badminton_arrangement/
 │   └── Code.gs                        ← GAS API（6 endpoints）
 └── src/
     ├── main.js
-    ├── App.vue                         ← RouterView + TabBar
+    ├── App.vue                         ← RouterView + TabBar + 管理員橫幅
     ├── assets/
     │   └── main.css                    ← CSS 變數、reset、全域樣式
     ├── router/
-    │   └── index.js                    ← 4 routes
+    │   └── index.js                    ← 5 routes + /admin 重導向 + token 處理
     ├── stores/
-    │   ├── app.js                      ← Pinia store（config/members/sessions/isAdmin）
+    │   ├── app.js                      ← Pinia store（config/members/sessions/isAdmin/adminToken/allUniqueGuests）
     │   └── __tests__/app.test.js
     ├── services/
     │   ├── api.js                      ← fetch wrapper for GAS
     │   └── __tests__/api.test.js
     ├── utils/
+    │   ├── date.js                     ← getComingSaturday
     │   ├── stats.js                    ← buildLeaderboard, getAttendanceCount, getCurrentStreak
     │   ├── badges.js                   ← BADGE_DEFINITIONS, getBadges
     │   └── __tests__/
     │       ├── stats.test.js
     │       └── badges.test.js
     ├── components/
-    │   ├── TabBar.vue
+    │   ├── TabBar.vue                  ← 3 tabs + 管理員第 4 tab「管理」
     │   ├── AttendeeChip.vue
     │   ├── HistoryCard.vue
     │   ├── RankCard.vue
     │   ├── BadgeGrid.vue
-    │   └── MemberCheckItem.vue
+    │   ├── MemberCheckItem.vue
+    │   └── GuestAutocomplete.vue       ← 訪客模糊搜尋下拉選單
     └── views/
-        ├── WeekView.vue
-        ├── HistoryView.vue
+        ├── WeekView.vue                ← 管理員有編輯 FAB
+        ├── SessionsView.vue            ← 場次列表 + inline 編輯 modal（取代 HistoryView + AdminView）
         ├── StatsView.vue
-        └── AdminView.vue
+        └── MembersView.vue             ← 成員管理（停用/啟用/新增/訪客升級）
 ```
 
 ---
@@ -2440,9 +2442,14 @@ git push origin release
 
 ## 完成標準
 
-- [ ] `npm test` 全部通過（stats、badges、api、store）
-- [ ] `npm run build` 無錯誤
-- [ ] 四個畫面手機瀏覽器正常顯示
-- [ ] 管理員可儲存名單並即時反映在 `/` 頁面
-- [ ] 歷史記錄 + 排行榜 + 徽章計算正確
-- [ ] Vercel 部署成功，GitHub push 自動觸發重新部署
+- [x] `npm test` 全部通過（stats、badges、api、store）— 32 tests passed
+- [x] `npm run build` 無錯誤
+- [x] 四個畫面手機瀏覽器正常顯示（`/`、`/sessions`、`/stats`、`/members`）
+- [x] 管理員可儲存名單並即時反映在 `/` 頁面
+- [x] 歷史記錄 + 排行榜 + 徽章計算正確
+- [x] Vercel 部署成功，GitHub push 自動觸發重新部署
+- [x] 管理員 token 持久化於 localStorage，重新整理不遺失
+- [x] `/admin` 舊網址自動重導向到 `/sessions`
+- [x] 訪客模糊搜尋下拉選單（GuestAutocomplete）
+- [x] 成員管理頁面（停用/啟用/新增/訪客升級）
+- [x] 管理員視覺指示（橫幅 + TabBar 第 4 tab）

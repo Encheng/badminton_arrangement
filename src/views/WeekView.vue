@@ -51,17 +51,33 @@
           />
         </div>
       </template>
+
+      <!-- 管理員：編輯本週名單 FAB -->
+      <button
+        v-if="store.isAdmin && currentSession"
+        class="fab"
+        aria-label="編輯本週名單"
+        @click="editCurrentSession"
+      >
+        ✏️
+      </button>
     </main>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app.js'
 import { getComingSaturday } from '../utils/date.js'
 import AttendeeChip from '../components/AttendeeChip.vue'
 
-const store = useAppStore()
+const store  = useAppStore()
+const router = useRouter()
+
+function editCurrentSession() {
+  router.push({ path: '/sessions', query: { date: currentSession.value.date } })
+}
 
 const config = computed(() => store.config)
 
@@ -187,4 +203,25 @@ const lastUpdatedLabel = computed(() => {
 .count-sub  { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
 
 .chip-wrap  { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Admin FAB */
+.fab {
+  position: fixed;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  right: max(16px, calc((100vw - 480px) / 2 + 16px));
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--secondary);
+  color: var(--on-secondary);
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(1, 135, 134, 0.35);
+  touch-action: manipulation;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+}
+.fab:active { transform: scale(0.92); }
+@media (hover: hover) { .fab:hover { box-shadow: 0 6px 24px rgba(1, 135, 134, 0.45); } }
 </style>

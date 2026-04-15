@@ -25,11 +25,13 @@
 
 | 角色 | 權限 | 入口 |
 |------|------|------|
-| 管理員 | 完整操作（新增場次、管理成員） | `/admin?token=xxx` |
-| 一般成員 | 唯讀查看所有頁面 | `/`、`/history`、`/stats` |
+| 管理員 | 完整操作（編輯場次出席、新增/刪除場次、管理成員、訪客升級） | 任意頁面加 `?token=xxx` 啟用，之後自動維持 |
+| 一般成員 | 唯讀查看所有頁面 | `/`、`/sessions`、`/stats` |
 
-- 管理員身份由 URL query param `token` 決定，不需要登入
-- Token 儲存於 Vercel Environment Variables，不進入版本控制
+- 管理員身份首次由 URL query param `token` 啟用，之後持久化於瀏覽器 `localStorage`
+- Token 儲存於 Vercel Environment Variables + Google Sheets `config` 分頁，不進入版本控制
+- 管理員模式下，頁面頂部顯示青色橫幅，TabBar 增加第 4 個「管理」頁籤
+- 可透過橫幅的「登出管理」按鈕清除 token 退出管理員模式
 
 ---
 
@@ -37,12 +39,14 @@
 
 | 路徑 | 元件 | 說明 |
 |------|------|------|
-| `/` | `WeekView` | 本週出席（唯讀），顯示場次資訊與出席名單 |
-| `/history` | `HistoryView` | 歷史記錄列表，每週一張卡片 |
+| `/` | `WeekView` | 本週出席（唯讀），管理員可見編輯 FAB |
+| `/sessions` | `SessionsView` | 場次列表（未來 + 過去），管理員可新增/刪除場次、inline 編輯出席名單 |
 | `/stats` | `StatsView` | 排行榜 + 個人成就徽章 |
-| `/admin?token=xxx` | `AdminView` | 管理員模式，勾選出席名單並儲存發布 |
+| `/members` | `MembersView` | 管理員專用：成員管理（停用/啟用/新增/訪客升級） |
+| `/history` | — | 重導向至 `/sessions` |
+| `/admin` | — | 重導向至 `/sessions`（保留 query 參數） |
 
-URL 完整反映頁面狀態，支援直接分享連結。
+管理員模式在所有頁面統一生效，不再使用獨立管理頁面。URL 完整反映頁面狀態，支援直接分享連結。
 
 ---
 
@@ -144,13 +148,20 @@ GAS 部署為 Web App，提供 6 個 endpoint，不含商業邏輯。
 
 ```
 useAppStore
-├── config          ← 場地設定（venue、time）
-├── members[]       ← 所有成員（含 inactive）
-├── sessions[]      ← 所有場次與出席記錄
-└── isAdmin         ← 由 URL token 比對決定
+├── config            ← 場地設定（venue、time）
+├── members[]         ← 所有成員（含 inactive）
+├── sessions[]        ← 所有場次與出席記錄
+├── loading           ← 資料載入中狀態
+├── isAdmin           ← 由 localStorage token 比對決定
+├── adminToken        ← 管理員 token（用於 API 呼叫）
+├── activeMembers     ← computed: 僅 active 成員
+├── allUniqueGuests   ← computed: 歷史所有不重複訪客（供模糊搜尋）
+├── setAdminToken()   ← 設定 token 並寫入 localStorage
+├── clearAdminToken() ← 清除 token 並移除 localStorage
+└── init()            ← 載入 config + members + sessions
 ```
 
-App 啟動時呼叫三支 GET API 一次載入全部資料，後續操作（統計、篩選、排序）全在前端 `computed` 處理，不重複打 API。
+App 啟動時呼叫三支 GET API 一次載入全部資料，後續操作（統計、篩選、排序）全在前端 `computed` 處理，不重複打 API。管理員 token 透過 `localStorage` 持久化，重新整理頁面不遺失。
 
 ---
 
@@ -194,7 +205,9 @@ App 啟動時呼叫三支 GET API 一次載入全部資料，後續操作（統�
 
 ## 安全考量
 
-- 管理員 token 僅存於 Vercel env var 與 Google Sheets `config` 分頁
+- 管理員 token 存於 Vercel env var、Google Sheets `config` 分頁、以及使用者瀏覽器 `localStorage`
+- Token 透過 URL query param `?token=xxx` 首次傳入後自動儲存於 `localStorage`，並從 URL 中移除
 - GET API 公開無保護（僅唯讀出席資料，無個資疑慮）
 - POST API 驗證 `admin_token`，不符回傳 403
 - 無用戶帳號系統，安全性靠 token 不公開維持
+- `localStorage` 的 token 可透過「登出管理」按鈕手動清除

@@ -1,8 +1,9 @@
 <!-- src/components/TabBar.vue -->
 <template>
   <nav class="tabbar" aria-label="主選單">
+    <div v-if="store.isAdmin" class="admin-bar"></div>
     <button
-      v-for="tab in tabs"
+      v-for="tab in visibleTabs"
       :key="tab.path"
       class="tab"
       :class="{ active: isActive(tab.path) }"
@@ -17,16 +18,26 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAppStore } from '../stores/app.js'
 
 const router = useRouter()
 const route  = useRoute()
+const store  = useAppStore()
 
-const tabs = [
-  { path: '/',        icon: '🏸', label: '本週' },
+const baseTabs = [
+  { path: '/',         icon: '🏸', label: '本週' },
   { path: '/sessions', icon: '📋', label: '場次' },
-  { path: '/stats',   icon: '🏆', label: '榮譽' },
+  { path: '/stats',    icon: '🏆', label: '榮譽' },
 ]
+
+const visibleTabs = computed(() => {
+  if (store.isAdmin) {
+    return [...baseTabs, { path: '/members', icon: '⚙️', label: '管理' }]
+  }
+  return baseTabs
+})
 
 function isActive(path) {
   return route.path === path
@@ -44,10 +55,17 @@ function isActive(path) {
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border-top: 1px solid var(--border);
   display: flex;
+  flex-wrap: wrap;
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   max-width: 480px;
   margin: 0 auto;
+}
+
+.admin-bar {
+  width: 100%;
+  height: 2px;
+  background: var(--secondary, #03DAC6);
 }
 
 .tab {

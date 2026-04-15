@@ -8,7 +8,7 @@ export const useAppStore = defineStore('app', () => {
   const members  = ref([])
   const sessions = ref([])
   const loading  = ref(true)
-  const _token   = ref(null)
+  const _token   = ref(localStorage.getItem('admin_token') || null)
 
   const isAdmin = computed(() =>
     !!_token.value && _token.value === import.meta.env.VITE_ADMIN_TOKEN
@@ -18,8 +18,28 @@ export const useAppStore = defineStore('app', () => {
     members.value.filter(m => m.active)
   )
 
+  const adminToken = computed(() => _token.value)
+
+  const allUniqueGuests = computed(() => {
+    const guestMap = new Map()
+    for (const session of sessions.value) {
+      for (const att of session.attendances) {
+        if (att.type === 'guest' && att.guest_key && !guestMap.has(att.guest_key)) {
+          guestMap.set(att.guest_key, { name: att.name, guest_key: att.guest_key })
+        }
+      }
+    }
+    return Array.from(guestMap.values())
+  })
+
   function setAdminToken(token) {
     _token.value = token
+    if (token) localStorage.setItem('admin_token', token)
+  }
+
+  function clearAdminToken() {
+    _token.value = null
+    localStorage.removeItem('admin_token')
   }
 
   // Google Sheets 可能回傳非標準日期/時間格式，前端統一正規化
@@ -66,5 +86,5 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  return { config, members, sessions, loading, isAdmin, activeMembers, setAdminToken, init }
+  return { config, members, sessions, loading, isAdmin, adminToken, activeMembers, allUniqueGuests, setAdminToken, clearAdminToken, init }
 })

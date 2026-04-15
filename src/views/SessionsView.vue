@@ -42,6 +42,9 @@
               v-for="session in pastSessions"
               :key="session.session_id"
               :session="session"
+              :editable="store.isAdmin"
+              @edit="editSession"
+              @delete="confirmDeleteSession"
             />
           </ol>
         </section>
@@ -85,7 +88,6 @@
               />
             </fieldset>
 
-            <!-- 訪客 -->
             <fieldset class="fieldset">
               <legend class="modal__label">臨時成員</legend>
               <MemberCheckItem
@@ -98,24 +100,7 @@
                 :is-guest="true"
                 @update:checked="removeNewGuest(g.guest_key)"
               />
-              <div class="input-row">
-                <input
-                  v-model="newGuestInput"
-                  class="guest-field"
-                  type="text"
-                  placeholder="輸入訪客姓名…"
-                  autocomplete="off"
-                  @keydown.enter.prevent="addNewGuest"
-                >
-                <button
-                  type="button"
-                  class="add-btn"
-                  :disabled="!newGuestInput.trim()"
-                  @click="addNewGuest"
-                >
-                  + 新增
-                </button>
-              </div>
+              <GuestAutocomplete @add="addNewGuest" />
             </fieldset>
 
             <div class="modal__actions">
@@ -129,6 +114,57 @@
               </button>
             </div>
             <p v-if="addError" class="error-msg">{{ addError }}</p>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- 編輯場次 Modal -->
+      <Teleport to="body">
+        <div v-if="showEditModal" class="modal-backdrop" @click.self="closeEditModal">
+          <div class="modal" role="dialog" aria-label="編輯場次">
+            <h2 class="modal__title">編輯場次名單</h2>
+            <p class="modal__date">{{ editDateLabel }}</p>
+
+            <fieldset class="fieldset">
+              <legend class="modal__label">固定成員</legend>
+              <MemberCheckItem
+                v-for="m in store.activeMembers"
+                :key="m.id"
+                :uid="'edit-' + m.id"
+                :name="m.name"
+                :checked="editCheckedIds.has(m.id)"
+                :meta="streakLabel(m.id)"
+                @update:checked="toggleEditMember(m.id, $event)"
+              />
+            </fieldset>
+
+            <fieldset class="fieldset">
+              <legend class="modal__label">臨時成員</legend>
+              <MemberCheckItem
+                v-for="g in editGuests"
+                :key="g.guest_key"
+                :uid="'edit-' + g.guest_key"
+                :name="g.name"
+                :checked="true"
+                :meta="'臨時'"
+                :is-guest="true"
+                @update:checked="removeEditGuest(g.guest_key)"
+              />
+              <GuestAutocomplete @add="addEditGuest" />
+            </fieldset>
+
+            <div class="modal__actions">
+              <button class="modal__cancel" @click="closeEditModal">取消</button>
+              <button
+                class="modal__save"
+                :disabled="savingEdit"
+                @click="handleEditSave"
+              >
+                {{ savingEdit ? '儲存中…' : '更新名單' }}
+              </button>
+            </div>
+            <p v-if="editError" class="error-msg">{{ editError }}</p>
+            <p v-if="editSuccess" class="success-msg">已成功更新！</p>
           </div>
         </div>
       </Teleport>
@@ -163,18 +199,37 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app.js'
 import { getTodayStr, getComingSaturday, getNextSaturdayAfter } from '../utils/date.js'
+import { getCurrentStreak } from '../utils/stats.js'
 import { api } from '../services/api.js'
 import SessionCard from '../components/SessionCard.vue'
 import MemberCheckItem from '../components/MemberCheckItem.vue'
+import GuestAutocomplete from '../components/GuestAutocomplete.vue'
 
-const store  = useAppStore()
-const router = useRouter()
+const store = useAppStore()
+const route = useRoute()
 
 const todayStr = getTodayStr()
+
+// --- helpers ---
+function makeGuestKey(name) {
+  return `${name.toLowerCase().replace(/\s+/g, '_')}_${new Date().getFullYear()}`
+}
+
+function formatDateLabel(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  return new Intl.DateTimeFormat('zh-TW', {
+    year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short',
+  }).format(d)
+}
+
+function streakLabel(memberId) {
+  const streak = getCurrentStreak(memberId, store.sessions)
+  return streak > 1 ? `連 ${streak} 週` : ''
+}
 
 // --- 場次分類 ---
 const allSessions = computed(() =>
@@ -205,10 +260,86 @@ const avgAttendance = computed(() => {
   return (total / withAttendance.length).toFixed(1)
 })
 
-// --- 編輯場次 ---
+// --- 編輯場次 (inline modal) ---
+const showEditModal   = ref(false)
+const editingSession  = ref(null)
+const editCheckedIds  = ref(new Set())
+const editGuests      = ref([])
+const savingEdit      = ref(false)
+const editError       = ref('')
+const editSuccess     = ref(false)
+
+const editDateLabel = computed(() =>
+  editingSession.value ? formatDateLabel(editingSession.value.date) : ''
+)
+
 function editSession(session) {
-  router.push({ path: '/admin', query: { date: session.date } })
+  editingSession.value = session
+  editCheckedIds.value = new Set(
+    session.attendances.filter(a => a.type === 'member').map(a => a.member_id)
+  )
+  editGuests.value = session.attendances
+    .filter(a => a.type === 'guest')
+    .map(a => ({ name: a.name, guest_key: a.guest_key }))
+  editError.value   = ''
+  editSuccess.value = false
+  showEditModal.value = true
 }
+
+function closeEditModal() {
+  showEditModal.value  = false
+  editingSession.value = null
+}
+
+function toggleEditMember(id, checked) {
+  if (checked) editCheckedIds.value.add(id)
+  else editCheckedIds.value.delete(id)
+}
+
+function addEditGuest(name) {
+  const trimmed = name.trim()
+  if (!trimmed) return
+  const guest_key = makeGuestKey(trimmed)
+  if (!editGuests.value.find(g => g.guest_key === guest_key)) {
+    editGuests.value.push({ name: trimmed, guest_key })
+  }
+}
+
+function removeEditGuest(key) {
+  editGuests.value = editGuests.value.filter(g => g.guest_key !== key)
+}
+
+async function handleEditSave() {
+  savingEdit.value  = true
+  editError.value   = ''
+  editSuccess.value = false
+  try {
+    const attendances = [
+      ...store.activeMembers
+        .filter(m => editCheckedIds.value.has(m.id))
+        .map(m => ({ member_id: m.id, name: m.name, type: 'member', guest_key: null })),
+      ...editGuests.value.map(g => ({
+        member_id: null, name: g.name, type: 'guest', guest_key: g.guest_key,
+      })),
+    ]
+    await api.saveSession(store.adminToken, editingSession.value.date, attendances)
+    await store.init()
+    editSuccess.value = true
+    setTimeout(() => { closeEditModal() }, 600)
+  } catch (err) {
+    editError.value = `儲存失敗：${err.message}`
+  } finally {
+    savingEdit.value = false
+  }
+}
+
+// Auto-open edit modal from ?date= query param (e.g. redirected from old /admin?date=)
+watch(() => store.loading, (isLoading) => {
+  if (!isLoading && route.query.date && store.isAdmin) {
+    const session = store.sessions.find(s => s.date === route.query.date)
+    if (session) editSession(session)
+  }
+}, { immediate: true })
 
 // --- 刪除場次 ---
 const deleteTarget = ref(null)
@@ -217,10 +348,7 @@ const deleteError  = ref('')
 
 const deleteTargetLabel = computed(() => {
   if (!deleteTarget.value) return ''
-  const d = new Date(deleteTarget.value.date + 'T00:00:00')
-  return new Intl.DateTimeFormat('zh-TW', {
-    year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short',
-  }).format(d)
+  return formatDateLabel(deleteTarget.value.date)
 })
 
 function confirmDeleteSession(session) {
@@ -237,10 +365,7 @@ async function handleDeleteSession() {
   deleting.value    = true
   deleteError.value = ''
   try {
-    await api.deleteSession(
-      import.meta.env.VITE_ADMIN_TOKEN,
-      deleteTarget.value.session_id
-    )
+    await api.deleteSession(store.adminToken, deleteTarget.value.session_id)
     deleteTarget.value = null
     await store.init()
   } catch (err) {
@@ -251,15 +376,12 @@ async function handleDeleteSession() {
 }
 
 // --- 新增場次 modal ---
-const showAddModal  = ref(false)
-const savingNew     = ref(false)
-const addError      = ref('')
-const newGuestInput = ref('')
-const newGuests     = ref([])
+const showAddModal = ref(false)
+const savingNew    = ref(false)
+const addError     = ref('')
+const newGuests    = ref([])
 
-// 預設日期：下一個可用的週六
 function calcNextSessionDate() {
-  // 如果已有未來場次，預設往最後一場再加一週
   if (futureSessions.value.length > 0) {
     const lastFuture = futureSessions.value[futureSessions.value.length - 1]
     return getNextSaturdayAfter(lastFuture.date)
@@ -275,14 +397,13 @@ function toggleNewMember(id, checked) {
   else newCheckedIds.value.delete(id)
 }
 
-function addNewGuest() {
-  const name = newGuestInput.value.trim()
-  if (!name) return
-  const guest_key = `${name.toLowerCase().replace(/\s+/g, '_')}_${new Date().getFullYear()}`
+function addNewGuest(name) {
+  const trimmed = name.trim()
+  if (!trimmed) return
+  const guest_key = makeGuestKey(trimmed)
   if (!newGuests.value.find(g => g.guest_key === guest_key)) {
-    newGuests.value.push({ name, guest_key })
+    newGuests.value.push({ name: trimmed, guest_key })
   }
-  newGuestInput.value = ''
 }
 
 function removeNewGuest(key) {
@@ -301,17 +422,11 @@ async function handleAddSession() {
         member_id: null, name: g.name, type: 'guest', guest_key: g.guest_key,
       })),
     ]
-    await api.saveSession(
-      import.meta.env.VITE_ADMIN_TOKEN,
-      newSessionDate.value,
-      attendances
-    )
+    await api.saveSession(store.adminToken, newSessionDate.value, attendances)
     await store.init()
-    // 重置表單
-    showAddModal.value  = false
-    newCheckedIds.value = new Set()
-    newGuests.value     = []
-    newGuestInput.value = ''
+    showAddModal.value   = false
+    newCheckedIds.value  = new Set()
+    newGuests.value      = []
     newSessionDate.value = calcNextSessionDate()
   } catch (err) {
     addError.value = `儲存失敗：${err.message}`
@@ -402,7 +517,11 @@ async function handleAddSession() {
 }
 .modal__title {
   font-size: 20px; font-weight: 800;
-  margin-bottom: 16px; color: var(--text-primary);
+  margin-bottom: 4px; color: var(--text-primary);
+}
+.modal__date {
+  font-size: 13px; color: var(--text-secondary);
+  margin-bottom: 16px;
 }
 .modal__label {
   display: block;
@@ -422,25 +541,6 @@ async function handleAddSession() {
 .modal__input:focus { border-color: var(--primary); }
 
 .fieldset { border: none; padding: 0; margin: 0 0 16px; }
-
-.input-row { display: flex; gap: 8px; margin: 10px 0 0; }
-.guest-field {
-  flex: 1; background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px; font-size: 15px; color: var(--text-primary);
-  outline: none; transition: border-color 0.15s ease;
-}
-.guest-field:focus { border-color: var(--primary); }
-.guest-field::placeholder { color: var(--text-tertiary); }
-.add-btn {
-  background: var(--secondary); color: var(--on-secondary);
-  border: none; border-radius: var(--radius-sm);
-  padding: 12px 16px; font-size: 14px; font-weight: 700;
-  cursor: pointer; touch-action: manipulation;
-  transition: opacity 0.15s ease;
-}
-.add-btn:disabled { opacity: 0.4; cursor: default; }
 
 .modal__actions {
   display: flex; gap: 10px; margin-top: 20px;
@@ -481,5 +581,6 @@ async function handleAddSession() {
 }
 .modal__delete:disabled { opacity: 0.6; cursor: default; }
 
-.error-msg { color: var(--error); font-size: 13px; margin-top: 12px; text-align: center; }
+.error-msg   { color: var(--error); font-size: 13px; margin-top: 12px; text-align: center; }
+.success-msg { color: var(--secondary-variant); font-size: 13px; margin-top: 12px; text-align: center; font-weight: 600; }
 </style>
