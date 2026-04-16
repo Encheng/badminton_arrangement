@@ -36,10 +36,70 @@
 
         <!-- 歷史場次 -->
         <section v-if="pastSessions.length" class="section">
-          <h2 class="section-heading">歷史記錄</h2>
-          <ol class="list" aria-label="歷史場次">
+          <div class="section-header">
+            <h2 class="section-heading">歷史記錄</h2>
+            <span class="section-count">{{ filteredPastSessions.length }} 筆</span>
+          </div>
+
+          <!-- 篩選列 -->
+          <div class="filter-bar">
+            <div class="filter-row">
+              <div class="filter-pills">
+                <button
+                  class="pill"
+                  :class="{ 'pill--active': filterYear === null }"
+                  @click="clearFilter"
+                >
+                  全部
+                </button>
+                <button
+                  v-for="year in availableYears"
+                  :key="year"
+                  class="pill"
+                  :class="{ 'pill--active': filterYear === year }"
+                  @click="setFilterYear(year)"
+                >
+                  {{ year }}
+                </button>
+              </div>
+              <label class="filter-jump">
+                <input
+                  type="month"
+                  class="filter-jump__input"
+                  @change="jumpToMonth"
+                >
+              </label>
+            </div>
+
+            <div v-if="filterYear && availableMonths.length > 1" class="filter-pills">
+              <button
+                class="pill pill--sm"
+                :class="{ 'pill--active': filterMonth === null }"
+                @click="setFilterMonth(null)"
+              >
+                全部月份
+              </button>
+              <button
+                v-for="m in availableMonths"
+                :key="m"
+                class="pill pill--sm"
+                :class="{ 'pill--active': filterMonth === m }"
+                @click="setFilterMonth(m)"
+              >
+                {{ m }}月
+              </button>
+            </div>
+          </div>
+
+          <!-- 無篩選結果 -->
+          <div v-if="!filteredPastSessions.length" class="empty-filter">
+            <p>此期間無場次記錄</p>
+          </div>
+
+          <!-- 歷史列表 -->
+          <ol v-else class="list" aria-label="歷史場次">
             <SessionCard
-              v-for="session in pastSessions"
+              v-for="session in visiblePastSessions"
               :key="session.session_id"
               :session="session"
               :editable="store.isAdmin"
@@ -47,6 +107,14 @@
               @delete="confirmDeleteSession"
             />
           </ol>
+
+          <!-- 無限捲動哨兵 -->
+          <div v-if="hasMore" ref="sentinel" class="load-sentinel">
+            <div class="spinner-sm"></div>
+          </div>
+          <p v-else-if="filteredPastSessions.length > 0" class="history-status">
+            已顯示全部 {{ filteredPastSessions.length }} 筆
+          </p>
         </section>
       </template>
 
@@ -199,7 +267,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app.js'
 import { getTodayStr, getComingSaturday, getNextSaturdayAfter } from '../utils/date.js'
@@ -252,6 +320,96 @@ function isCurrent(session) {
   return futureSessions.value.length > 0 &&
          futureSessions.value[0].session_id === session.session_id
 }
+
+// --- 歷史篩選 & 無限捲動 ---
+const PAGE_SIZE = 10
+const filterYear  = ref(null)  // null = 全部
+const filterMonth = ref(null)  // null = 全部
+const visibleCount = ref(PAGE_SIZE)
+const sentinel = ref(null)
+let observer = null
+
+const availableYears = computed(() => {
+  const years = new Set(pastSessions.value.map(s => s.date.slice(0, 4)))
+  return [...years].sort((a, b) => b.localeCompare(a))
+})
+
+const availableMonths = computed(() => {
+  if (!filterYear.value) return []
+  const months = new Set(
+    pastSessions.value
+      .filter(s => s.date.startsWith(filterYear.value))
+      .map(s => parseInt(s.date.slice(5, 7), 10))
+  )
+  return [...months].sort((a, b) => a - b)
+})
+
+const filteredPastSessions = computed(() => {
+  let list = pastSessions.value
+  if (filterYear.value) {
+    list = list.filter(s => s.date.startsWith(filterYear.value))
+  }
+  if (filterMonth.value !== null) {
+    const mm = String(filterMonth.value).padStart(2, '0')
+    list = list.filter(s => s.date.slice(5, 7) === mm)
+  }
+  return list
+})
+
+const visiblePastSessions = computed(() =>
+  filteredPastSessions.value.slice(0, visibleCount.value)
+)
+
+const hasMore = computed(() =>
+  visibleCount.value < filteredPastSessions.value.length
+)
+
+function setFilterYear(year) {
+  filterYear.value = year
+  filterMonth.value = null
+  visibleCount.value = PAGE_SIZE
+}
+
+function setFilterMonth(month) {
+  filterMonth.value = month
+  visibleCount.value = PAGE_SIZE
+}
+
+function jumpToMonth(event) {
+  const val = event.target.value  // "2026-03"
+  if (!val) return
+  const [y, m] = val.split('-')
+  filterYear.value = y
+  filterMonth.value = parseInt(m, 10)
+  visibleCount.value = PAGE_SIZE
+}
+
+function clearFilter() {
+  filterYear.value = null
+  filterMonth.value = null
+  visibleCount.value = PAGE_SIZE
+}
+
+function setupObserver() {
+  if (observer) observer.disconnect()
+  if (!sentinel.value) return
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && hasMore.value) {
+      visibleCount.value += PAGE_SIZE
+    }
+  }, { rootMargin: '200px' })
+  observer.observe(sentinel.value)
+}
+
+onMounted(() => {
+  nextTick(setupObserver)
+})
+
+onUnmounted(() => {
+  if (observer) observer.disconnect()
+})
+
+watch(sentinel, () => nextTick(setupObserver))
 
 const avgAttendance = computed(() => {
   const withAttendance = allSessions.value.filter(s => s.attendances.length > 0)
@@ -580,6 +738,115 @@ async function handleAddSession() {
   transition: opacity 0.15s ease;
 }
 .modal__delete:disabled { opacity: 0.6; cursor: default; }
+
+/* Filter bar */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.section-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.filter-bar { margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-pills {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-width: 0;
+}
+.filter-pills::-webkit-scrollbar { display: none; }
+
+.pill {
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.pill--sm { padding: 4px 12px; font-size: 12px; }
+.pill--active {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
+@media (hover: hover) {
+  .pill:not(.pill--active):hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+}
+
+.filter-jump {
+  flex-shrink: 0;
+}
+.filter-jump__input {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  width: 40px;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+.filter-jump__input:focus,
+.filter-jump__input:hover { opacity: 1; border-color: var(--primary); }
+
+.empty-filter {
+  text-align: center;
+  padding: 32px 16px;
+  font-size: 14px;
+  color: var(--text-tertiary);
+}
+
+/* Infinite scroll sentinel */
+.load-sentinel {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+.spinner-sm {
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid rgba(98, 0, 238, 0.15);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.history-status {
+  text-align: center;
+  padding: 16px 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
 
 .error-msg   { color: var(--error); font-size: 13px; margin-top: 12px; text-align: center; }
 .success-msg { color: var(--secondary-variant); font-size: 13px; margin-top: 12px; text-align: center; font-weight: 600; }
