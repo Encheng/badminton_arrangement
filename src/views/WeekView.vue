@@ -7,7 +7,7 @@
         <span>{{ formattedDate }}</span>
       </div>
       <div class="hero__content">
-        <p class="hero__eyebrow">本週場次</p>
+        <p class="hero__eyebrow">最近場次</p>
         <h1 class="hero__title">
           {{ sessionDateLabel }}<br>{{ config.time_start }}–{{ config.time_end }}
         </h1>
@@ -26,7 +26,7 @@
       <!-- 尚未設定 -->
       <div v-else-if="!currentSession" class="empty-state">
         <p class="empty-state__icon">🏸</p>
-        <p class="empty-state__title">本週名單尚未設定</p>
+        <p class="empty-state__title">目前無即將到來的場次</p>
         <p class="empty-state__sub">管理員稍後會更新…</p>
       </div>
 
@@ -56,7 +56,7 @@
       <button
         v-if="store.isAdmin && currentSession"
         class="fab"
-        aria-label="編輯本週名單"
+        aria-label="編輯此場名單"
         @click="editCurrentSession"
       >
         ✏️
@@ -69,7 +69,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app.js'
-import { getComingSaturday } from '../utils/date.js'
+import { getTodayStr } from '../utils/date.js'
 import AttendeeChip from '../components/AttendeeChip.vue'
 
 const store  = useAppStore()
@@ -81,24 +81,23 @@ function editCurrentSession() {
 
 const config = computed(() => store.config)
 
-// 本週六日期（固定週六場次）
-const saturdayDate = getComingSaturday()
-
-// 找本週六（或最近未來）的場次
-const currentSession = computed(() =>
-  store.sessions.find(s => s.date === saturdayDate) ??
-  store.sessions.find(s => s.date >= saturdayDate) ??
-  null
-)
+// 找今天（含）之後最近的場次
+const currentSession = computed(() => {
+  const today = getTodayStr()
+  const future = store.sessions
+    .filter(s => s.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+  return future[0] ?? null
+})
 
 const attendees = computed(() =>
   currentSession.value?.attendances ?? []
 )
 
-// hero 大標：永遠顯示本週六日期
+// hero 大標：顯示最近場次日期
 const sessionDateLabel = computed(() => {
-  const target = currentSession.value?.date ?? saturdayDate
-  const d = new Date(target + 'T00:00:00')
+  if (!currentSession.value) return ''
+  const d = new Date(currentSession.value.date + 'T00:00:00')
   return new Intl.DateTimeFormat('zh-TW', {
     month: 'numeric', day: 'numeric', weekday: 'short',
   }).format(d)
@@ -106,8 +105,8 @@ const sessionDateLabel = computed(() => {
 
 // status bar 右上角
 const formattedDate = computed(() => {
-  const target = currentSession.value?.date ?? saturdayDate
-  const d = new Date(target + 'T00:00:00')
+  if (!currentSession.value) return ''
+  const d = new Date(currentSession.value.date + 'T00:00:00')
   return new Intl.DateTimeFormat('zh-TW', {
     year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short',
   }).format(d)
