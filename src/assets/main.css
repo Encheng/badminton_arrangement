@@ -39,6 +39,23 @@ body {
   min-height: 100dvh;
 }
 
+/* Hero → Sheet 動畫銜接：延伸 hero 背景色，避免 sheet 圓角動畫時露出底色 */
+.hero {
+  position: relative;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -60px;
+  height: 60px;
+  background: inherit;
+}
+.sheet {
+  position: relative;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     transition: none !important;

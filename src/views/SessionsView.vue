@@ -1,16 +1,26 @@
 <!-- src/views/SessionsView.vue -->
 <template>
   <div class="view">
-    <header class="hero hero--variant">
+    <motion.header
+      class="hero hero--variant"
+      :initial="{ opacity: 0, y: 30 }"
+      :animate="{ opacity: 1, y: 0 }"
+      :transition="{ duration: 0.45, ease: 'easeOut' }"
+    >
       <div class="status-bar" aria-hidden="true"></div>
       <div class="hero__content">
         <p class="hero__eyebrow">所有場次</p>
         <h1 class="hero__title">場次總覽</h1>
         <p class="hero__meta">共 {{ allSessions.length }} 場 · 平均 {{ avgAttendance }} 人</p>
       </div>
-    </header>
+    </motion.header>
 
-    <main class="sheet">
+    <motion.main
+      class="sheet"
+      :initial="{ opacity: 0, y: 40 }"
+      :animate="{ opacity: 1, y: 0 }"
+      :transition="{ duration: 0.5, ease: 'easeOut', delay: 0.12 }"
+    >
       <div v-if="!allSessions.length" class="empty-state">
         <p class="empty-state__icon">📋</p>
         <p class="empty-state__title">尚無場次記錄</p>
@@ -118,20 +128,45 @@
         </section>
       </template>
 
-      <!-- 管理員：新增場次 FAB -->
-      <button
-        v-if="store.isAdmin"
-        class="fab"
-        aria-label="新增未來場次"
-        @click="showAddModal = true"
-      >
-        +
-      </button>
+    </motion.main>
 
-      <!-- 新增場次 Modal -->
+    <!-- 管理員：新增場次 FAB（在 motion.main 外避免 transform 影響 fixed 定位）-->
+    <motion.button
+      v-if="store.isAdmin"
+      class="fab"
+      aria-label="新增未來場次"
+      :initial="{ scale: 0, opacity: 0 }"
+      :animate="{ scale: 1, opacity: 1 }"
+      :transition="{ type: 'spring', stiffness: 400, damping: 20, delay: 0.3 }"
+      :whileHover="{ scale: 1.1, boxShadow: '0 6px 24px rgba(98, 0, 238, 0.45)' }"
+      :whilePress="{ scale: 0.9 }"
+      @click="showAddModal = true"
+    >
+      +
+    </motion.button>
+
+    <!-- 新增場次 Modal -->
       <Teleport to="body">
-        <div v-if="showAddModal" class="modal-backdrop" @click.self="showAddModal = false">
-          <div class="modal" role="dialog" aria-label="新增場次">
+        <AnimatePresence>
+        <motion.div
+          v-if="showAddModal"
+          key="add-backdrop"
+          class="modal-backdrop"
+          :initial="{ opacity: 0 }"
+          :animate="{ opacity: 1 }"
+          :exit="{ opacity: 0 }"
+          :transition="{ duration: 0.2 }"
+          @click.self="showAddModal = false"
+        >
+          <motion.div
+            class="modal"
+            role="dialog"
+            aria-label="新增場次"
+            :initial="{ y: '100%' }"
+            :animate="{ y: 0 }"
+            :exit="{ y: '100%' }"
+            :transition="{ type: 'spring', stiffness: 300, damping: 30 }"
+          >
             <h2 class="modal__title">新增場次</h2>
 
             <label class="modal__label">
@@ -182,14 +217,33 @@
               </button>
             </div>
             <p v-if="addError" class="error-msg">{{ addError }}</p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
+        </AnimatePresence>
       </Teleport>
 
       <!-- 編輯場次 Modal -->
       <Teleport to="body">
-        <div v-if="showEditModal" class="modal-backdrop" @click.self="closeEditModal">
-          <div class="modal" role="dialog" aria-label="編輯場次">
+        <AnimatePresence>
+        <motion.div
+          v-if="showEditModal"
+          key="edit-backdrop"
+          class="modal-backdrop"
+          :initial="{ opacity: 0 }"
+          :animate="{ opacity: 1 }"
+          :exit="{ opacity: 0 }"
+          :transition="{ duration: 0.2 }"
+          @click.self="closeEditModal"
+        >
+          <motion.div
+            class="modal"
+            role="dialog"
+            aria-label="編輯場次"
+            :initial="{ y: '100%' }"
+            :animate="{ y: 0 }"
+            :exit="{ y: '100%' }"
+            :transition="{ type: 'spring', stiffness: 300, damping: 30 }"
+          >
             <h2 class="modal__title">編輯場次名單</h2>
             <p class="modal__date">{{ editDateLabel }}</p>
 
@@ -233,14 +287,33 @@
             </div>
             <p v-if="editError" class="error-msg">{{ editError }}</p>
             <p v-if="editSuccess" class="success-msg">已成功更新！</p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
+        </AnimatePresence>
       </Teleport>
 
       <!-- 刪除確認 Modal -->
       <Teleport to="body">
-        <div v-if="deleteTarget" class="modal-backdrop" @click.self="cancelDelete">
-          <div class="modal" role="alertdialog" aria-label="刪除場次確認">
+        <AnimatePresence>
+        <motion.div
+          v-if="deleteTarget"
+          key="delete-backdrop"
+          class="modal-backdrop"
+          :initial="{ opacity: 0 }"
+          :animate="{ opacity: 1 }"
+          :exit="{ opacity: 0 }"
+          :transition="{ duration: 0.2 }"
+          @click.self="cancelDelete"
+        >
+          <motion.div
+            class="modal"
+            role="alertdialog"
+            aria-label="刪除場次確認"
+            :initial="{ y: '100%' }"
+            :animate="{ y: 0 }"
+            :exit="{ y: '100%' }"
+            :transition="{ type: 'spring', stiffness: 300, damping: 30 }"
+          >
             <h2 class="modal__title">確認刪除場次</h2>
             <p class="delete-info">
               確定要刪除 <strong>{{ deleteTargetLabel }}</strong> 的場次嗎？
@@ -259,16 +332,17 @@
               </button>
             </div>
             <p v-if="deleteError" class="error-msg">{{ deleteError }}</p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
+        </AnimatePresence>
       </Teleport>
-    </main>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
+import { motion, AnimatePresence } from 'motion-v'
 import { useAppStore } from '../stores/app.js'
 import { getTodayStr, getComingSaturday, getNextSaturdayAfter } from '../utils/date.js'
 import { getCurrentStreak } from '../utils/stats.js'
@@ -650,8 +724,6 @@ async function handleAddSession() {
   z-index: 50;
   display: flex; align-items: center; justify-content: center;
 }
-.fab:active { transform: scale(0.92); }
-@media (hover: hover) { .fab:hover { box-shadow: 0 6px 24px rgba(98, 0, 238, 0.45); } }
 
 /* Modal */
 .modal-backdrop {
@@ -667,11 +739,6 @@ async function handleAddSession() {
   width: 100%; max-width: 480px;
   max-height: 85dvh;
   overflow-y: auto;
-  animation: slideUp 0.25s ease;
-}
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
 }
 .modal__title {
   font-size: 20px; font-weight: 800;

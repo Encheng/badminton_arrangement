@@ -3,23 +3,28 @@
   <div>
     <h2 class="section-heading" :id="headingId">成就徽章</h2>
     <div class="grid" role="list" :aria-labelledby="headingId">
-      <div
-        v-for="badge in badges"
+      <motion.div
+        v-for="(badge, i) in badges"
         :key="badge.id"
         class="badge"
         :class="{ 'badge--locked': !badge.unlocked }"
         role="listitem"
         :aria-label="`${badge.name}（${badge.unlocked ? '已解鎖' : '未解鎖'}）`"
+        :initial="{ opacity: 0, scale: 0.6 }"
+        :animate="{ opacity: badge.unlocked ? 1 : 0.28, scale: 1 }"
+        :transition="{ type: 'spring', stiffness: 350, damping: 20, delay: i * 0.05 }"
+        :whileHover="badge.unlocked ? { scale: 1.1, y: -2 } : {}"
       >
         <div class="badge__icon" aria-hidden="true">{{ badge.icon }}</div>
         <div class="badge__name">{{ badge.name }}</div>
-      </div>
+      </motion.div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 import { useAppStore } from '../stores/app.js'
 import { getBadges } from '../utils/badges.js'
 
@@ -54,7 +59,6 @@ const badges = computed(() =>
   border: 1px solid rgba(98, 0, 238, 0.1);
   box-shadow: var(--shadow-sm);
 }
-.badge--locked { opacity: 0.28; }
 .badge__icon { font-size: 22px; margin-bottom: 4px; }
 .badge__name { font-size: 10px; color: var(--text-secondary); line-height: 1.3; }
 </style>

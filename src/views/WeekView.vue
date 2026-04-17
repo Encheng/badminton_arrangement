@@ -2,7 +2,12 @@
 <template>
   <div class="view">
     <!-- Hero -->
-    <header class="hero hero--primary">
+    <motion.header
+      class="hero hero--primary"
+      :initial="{ opacity: 0, y: 30 }"
+      :animate="{ opacity: 1, y: 0 }"
+      :transition="{ duration: 0.45, ease: 'easeOut' }"
+    >
       <div class="status-bar" aria-hidden="true">
         <span>{{ formattedDate }}</span>
       </div>
@@ -13,10 +18,15 @@
         </h1>
         <p class="hero__meta">📍 {{ config.venue_name }}</p>
       </div>
-    </header>
+    </motion.header>
 
     <!-- Sheet -->
-    <main class="sheet">
+    <motion.main
+      class="sheet"
+      :initial="{ opacity: 0, y: 40 }"
+      :animate="{ opacity: 1, y: 0 }"
+      :transition="{ duration: 0.5, ease: 'easeOut', delay: 0.12 }"
+    >
       <!-- 載入中 -->
       <div v-if="store.loading" class="loading-state">
         <div class="spinner" aria-label="載入中"></div>
@@ -32,7 +42,14 @@
 
       <!-- 有名單 -->
       <template v-else>
-        <div class="count-row" role="status" aria-live="polite">
+        <motion.div
+          class="count-row"
+          role="status"
+          aria-live="polite"
+          :initial="{ opacity: 0, y: 16 }"
+          :animate="{ opacity: 1, y: 0 }"
+          :transition="{ duration: 0.4, ease: 'easeOut' }"
+        >
           <span class="count-num" :aria-label="`${attendees.length} 人出席`">
             {{ attendees.length }}
           </span>
@@ -40,34 +57,42 @@
             <p class="count-desc">人確認出席</p>
             <p class="count-sub">{{ lastUpdatedLabel }}</p>
           </div>
-        </div>
+        </motion.div>
 
-        <div class="chip-wrap" role="list" aria-label="出席成員">
+        <div class="attendee-grid" role="list" aria-label="出席成員">
           <AttendeeChip
-            v-for="att in attendees"
+            v-for="(att, i) in attendees"
             :key="att.id"
             :name="att.name"
             :type="att.type"
+            :delay="i * 0.05"
           />
         </div>
       </template>
 
-      <!-- 管理員：編輯本週名單 FAB -->
-      <button
-        v-if="store.isAdmin && currentSession"
-        class="fab"
-        aria-label="編輯此場名單"
-        @click="editCurrentSession"
-      >
-        ✏️
-      </button>
-    </main>
+    </motion.main>
+
+    <!-- 管理員：編輯本週名單 FAB（在 motion.main 外避免 transform 影響 fixed 定位）-->
+    <motion.button
+      v-if="store.isAdmin && currentSession"
+      class="fab"
+      aria-label="編輯此場名單"
+      :initial="{ scale: 0, opacity: 0 }"
+      :animate="{ scale: 1, opacity: 1 }"
+      :transition="{ type: 'spring', stiffness: 400, damping: 20, delay: 0.3 }"
+      :whileHover="{ scale: 1.1 }"
+      :whilePress="{ scale: 0.9 }"
+      @click="editCurrentSession"
+    >
+      ✏️
+    </motion.button>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { motion } from 'motion-v'
 import { useAppStore } from '../stores/app.js'
 import { getTodayStr } from '../utils/date.js'
 import AttendeeChip from '../components/AttendeeChip.vue'
@@ -201,7 +226,11 @@ const lastUpdatedLabel = computed(() => {
 .count-desc { font-size: 14px; font-weight: 600; }
 .count-sub  { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
 
-.chip-wrap  { display: flex; flex-wrap: wrap; gap: 8px; }
+.attendee-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
 
 /* Admin FAB */
 .fab {
@@ -221,6 +250,4 @@ const lastUpdatedLabel = computed(() => {
   z-index: 50;
   display: flex; align-items: center; justify-content: center;
 }
-.fab:active { transform: scale(0.92); }
-@media (hover: hover) { .fab:hover { box-shadow: 0 6px 24px rgba(1, 135, 134, 0.45); } }
 </style>

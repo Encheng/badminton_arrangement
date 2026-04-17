@@ -1,6 +1,12 @@
 <!-- src/components/HistoryCard.vue -->
 <template>
-  <li class="card">
+  <motion.li
+    class="card"
+    :initial="{ opacity: 0, y: 16 }"
+    :animate="{ opacity: 1, y: 0 }"
+    :transition="{ duration: 0.3, ease: 'easeOut' }"
+    :whileHover="{ y: -2, boxShadow: '0 6px 20px rgba(0,0,0,0.08)' }"
+  >
     <time class="card__date" :datetime="session.date">
       {{ formattedDate }}
     </time>
@@ -8,11 +14,12 @@
     <p class="card__count">
       {{ session.attendances.length }} 人出席
     </p>
-  </li>
+  </motion.li>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 
 const props = defineProps({
   session: { type: Object, required: true },

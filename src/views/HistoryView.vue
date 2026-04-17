@@ -1,16 +1,26 @@
 <!-- src/views/HistoryView.vue -->
 <template>
   <div class="view">
-    <header class="hero hero--variant">
+    <motion.header
+      class="hero hero--variant"
+      :initial="{ opacity: 0, y: 30 }"
+      :animate="{ opacity: 1, y: 0 }"
+      :transition="{ duration: 0.45, ease: 'easeOut' }"
+    >
       <div class="status-bar" aria-hidden="true"></div>
       <div class="hero__content">
         <p class="hero__eyebrow">出席紀錄</p>
         <h1 class="hero__title">歷史記錄</h1>
         <p class="hero__meta">共 {{ pastSessions.length }} 週 · 平均 {{ avgAttendance }} 人</p>
       </div>
-    </header>
+    </motion.header>
 
-    <main class="sheet">
+    <motion.main
+      class="sheet"
+      :initial="{ opacity: 0, y: 40 }"
+      :animate="{ opacity: 1, y: 0 }"
+      :transition="{ duration: 0.5, ease: 'easeOut', delay: 0.12 }"
+    >
       <div v-if="!pastSessions.length" class="empty-state">
         <p class="empty-state__icon">📋</p>
         <p class="empty-state__title">尚無歷史記錄</p>
@@ -22,12 +32,13 @@
           :session="session"
         />
       </ol>
-    </main>
+    </motion.main>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 import { useAppStore } from '../stores/app.js'
 import HistoryCard from '../components/HistoryCard.vue'
 

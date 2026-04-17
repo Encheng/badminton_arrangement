@@ -1,6 +1,14 @@
 <!-- src/components/SessionCard.vue -->
 <template>
-  <li class="card" :class="{ 'card--future': isFuture, 'card--current': isCurrent }">
+  <motion.li
+    class="card"
+    :class="{ 'card--future': isFuture, 'card--current': isCurrent }"
+    :initial="{ opacity: 0, y: 20 }"
+    :animate="{ opacity: 1, y: 0 }"
+    :transition="{ duration: 0.35, ease: 'easeOut' }"
+    :whileHover="{ y: -2, boxShadow: '0 6px 20px rgba(0,0,0,0.08)' }"
+    :whilePress="{ scale: 0.98 }"
+  >
     <div class="card__header">
       <time class="card__date" :datetime="session.date">
         {{ formattedDate }}
@@ -30,11 +38,12 @@
         </button>
       </div>
     </div>
-  </li>
+  </motion.li>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 
 const props = defineProps({
   session:   { type: Object, required: true },

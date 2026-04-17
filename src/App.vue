@@ -14,19 +14,24 @@
       <button class="admin-banner__logout" @click="exitAdmin">登出管理</button>
     </div>
 
-    <Suspense>
-      <RouterView />
-    </Suspense>
+    <RouterView v-slot="{ Component, route }">
+      <Transition :name="transitionName" mode="out-in">
+        <Suspense>
+          <component :is="Component" :key="route.path" />
+        </Suspense>
+      </Transition>
+    </RouterView>
     <TabBar />
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAppStore } from './stores/app.js'
 import TabBar from './components/TabBar.vue'
 
 const store = useAppStore()
+const transitionName = ref('page-fade')
 
 onMounted(() => store.init())
 
@@ -94,4 +99,20 @@ function exitAdmin() {
 .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from,
 .fade-leave-to { opacity: 0; }
+
+/* Page route transitions */
+.page-fade-enter-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.page-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
 </style>

@@ -1,21 +1,34 @@
 <!-- src/components/RankCard.vue -->
 <template>
-  <li class="rank-card" :class="{ 'rank-card--top': rank === 1 }">
+  <motion.li
+    class="rank-card"
+    :class="{ 'rank-card--top': rank === 1 }"
+    :initial="{ opacity: 0, x: -20 }"
+    :animate="{ opacity: 1, x: 0 }"
+    :transition="{ duration: 0.35, ease: 'easeOut', delay: rank * 0.06 }"
+    :whileHover="{ x: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }"
+  >
     <span class="rank-icon" aria-hidden="true">{{ rankIcon }}</span>
     <div class="rank-body">
       <span class="rank-name">{{ member.name }}</span>
       <div class="rank-bar-bg" role="presentation">
-        <div class="rank-bar" :style="{ width: barWidth }"></div>
+        <motion.div
+          class="rank-bar"
+          :initial="{ width: '0%' }"
+          :animate="{ width: barWidth }"
+          :transition="{ duration: 0.6, ease: 'easeOut', delay: 0.2 + rank * 0.06 }"
+        />
       </div>
     </div>
     <span class="rank-count" :aria-label="`${count} 次`">
       {{ count }} 次
     </span>
-  </li>
+  </motion.li>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { motion } from 'motion-v'
 
 const props = defineProps({
   rank:     { type: Number, required: true },
