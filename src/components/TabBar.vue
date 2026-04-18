@@ -3,7 +3,7 @@
   <nav class="tabbar" aria-label="主選單">
     <div v-if="store.isAdmin" class="admin-bar"></div>
     <button
-      v-for="tab in visibleTabs"
+      v-for="tab in tabs"
       :key="tab.path"
       class="tab"
       :class="{ active: isActive(tab.path) }"
@@ -18,7 +18,6 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app.js'
 
@@ -26,18 +25,12 @@ const router = useRouter()
 const route  = useRoute()
 const store  = useAppStore()
 
-const baseTabs = [
+const tabs = [
   { path: '/',         icon: '🏸', label: '本週' },
   { path: '/sessions', icon: '📋', label: '場次' },
   { path: '/stats',    icon: '🏆', label: '榮譽' },
+  { path: '/members',  icon: '⚙️', label: '管理' },
 ]
-
-const visibleTabs = computed(() => {
-  if (store.isAdmin) {
-    return [...baseTabs, { path: '/members', icon: '⚙️', label: '管理' }]
-  }
-  return baseTabs
-})
 
 function isActive(path) {
   return route.path === path

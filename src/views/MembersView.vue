@@ -1,11 +1,31 @@
 <!-- src/views/MembersView.vue -->
 <template>
   <div class="view">
-    <!-- 未授權 -->
+    <!-- 未授權 — 管理員登入 -->
     <div v-if="!store.isAdmin" class="unauthorized">
       <p class="unauthorized__icon">🔒</p>
-      <p class="unauthorized__title">需要管理員權限</p>
-      <p class="unauthorized__sub">請使用含有 token 的管理員連結</p>
+      <p class="unauthorized__title">管理員登入</p>
+      <p class="unauthorized__sub">請輸入管理員密碼以使用管理功能</p>
+
+      <form class="login-form" @submit.prevent="handleLogin">
+        <input
+          v-model="loginToken"
+          class="login-input"
+          type="password"
+          placeholder="管理員密碼…"
+          autocomplete="current-password"
+          spellcheck="false"
+          inputmode="text"
+        />
+        <button
+          class="login-btn"
+          type="submit"
+          :disabled="!loginToken.trim()"
+        >
+          登入
+        </button>
+        <p v-if="loginError" class="login-error">密碼錯誤，請重新輸入</p>
+      </form>
     </div>
 
     <!-- 管理畫面 -->
@@ -128,6 +148,21 @@ const saving = ref(new Set())
 const newMemberName = ref('')
 const addingMember = ref(false)
 const addError = ref('')
+const loginToken = ref('')
+const loginError = ref(false)
+
+function handleLogin() {
+  const token = loginToken.value.trim()
+  if (!token) return
+  store.setAdminToken(token)
+  if (!store.isAdmin) {
+    loginError.value = true
+    store.clearAdminToken()
+    loginToken.value = ''
+  } else {
+    loginError.value = false
+  }
+}
 
 const activeMembers = computed(() => store.members.filter(m => m.active))
 const inactiveMembers = computed(() => store.members.filter(m => !m.active))
@@ -192,6 +227,52 @@ async function promoteGuest(guest) {
 .unauthorized__icon  { font-size: 64px; margin-bottom: 16px; }
 .unauthorized__title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
 .unauthorized__sub   { font-size: 14px; color: var(--text-tertiary); }
+
+.login-form {
+  margin-top: 24px;
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.login-input {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  font-size: 16px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  text-align: center;
+}
+.login-input:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(98, 0, 238, 0.15);
+}
+.login-input::placeholder { color: var(--text-tertiary); }
+.login-btn {
+  background: var(--primary);
+  color: var(--on-primary);
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+  box-shadow: 0 4px 18px rgba(98, 0, 238, 0.3);
+}
+.login-btn:disabled { opacity: 0.4; cursor: default; }
+.login-btn:active:not(:disabled) { transform: scale(0.96); }
+.login-error {
+  color: var(--error);
+  font-size: 13px;
+  text-align: center;
+  font-weight: 600;
+}
 
 .hero--secondary { background: var(--secondary); }
 .status-bar { height: 44px; }

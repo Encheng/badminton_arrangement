@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7C4DFF"/>
+      <stop offset="100%" stop-color="#6200EE"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  <!-- Shuttlecock cork (bottom) -->
+  <ellipse cx="256" cy="340" rx="42" ry="36" fill="#FFFFFF" opacity="0.95"/>
+  <!-- Shuttlecock feathers (top) -->
+  <path d="M256 130 C256 130 200 200 200 270 C200 290 225 310 256 310 C287 310 312 290 312 270 C312 200 256 130 256 130Z" fill="#FFFFFF" opacity="0.9"/>
+  <!-- Feather lines -->
+  <line x1="256" y1="150" x2="256" y2="305" stroke="#6200EE" stroke-width="2.5" opacity="0.3"/>
+  <line x1="228" y1="200" x2="238" y2="305" stroke="#6200EE" stroke-width="1.8" opacity="0.2"/>
+  <line x1="284" y1="200" x2="274" y2="305" stroke="#6200EE" stroke-width="1.8" opacity="0.2"/>
+  <!-- Cork detail -->
+  <ellipse cx="256" cy="340" rx="30" ry="24" fill="none" stroke="#6200EE" stroke-width="1.5" opacity="0.15"/>
+</svg>
