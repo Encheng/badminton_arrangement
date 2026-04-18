@@ -1,6 +1,6 @@
 <!-- src/App.vue -->
 <template>
-  <div class="app-wrapper">
+  <div class="app-wrapper" :class="{ 'has-admin-banner': store.isAdmin }">
     <!-- 全域載入遮罩 -->
     <Transition name="fade">
       <div v-if="store.loading" class="global-loading">
@@ -47,6 +47,10 @@ function exitAdmin() {
   min-height: 100dvh;
   position: relative;
   background: var(--background);
+  --status-bar-height: env(safe-area-inset-top, 44px);
+}
+.app-wrapper.has-admin-banner {
+  --status-bar-height: 0px;
 }
 
 .admin-banner {
@@ -54,7 +58,7 @@ function exitAdmin() {
   color: var(--on-secondary, #000);
   font-size: 11px;
   font-weight: 700;
-  padding: 4px 16px;
+  padding: env(safe-area-inset-top, 0px) 16px 4px;
   display: flex;
   justify-content: space-between;
   align-items: center;

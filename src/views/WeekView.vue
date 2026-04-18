@@ -152,7 +152,7 @@ const lastUpdatedLabel = computed(() => {
 .status-bar {
   display: flex;
   justify-content: flex-end;
-  padding: 14px 22px 2px;
+  padding: var(--status-bar-height, env(safe-area-inset-top, 44px)) 22px 2px;
   font-size: 12px;
   font-weight: 600;
   color: var(--on-primary);

@@ -222,7 +222,8 @@ async function promoteGuest(guest) {
 .unauthorized {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  min-height: 100dvh; text-align: center; padding: 32px;
+  min-height: 100dvh; text-align: center;
+  padding: calc(32px + env(safe-area-inset-top, 0px)) 32px 32px;
 }
 .unauthorized__icon  { font-size: 64px; margin-bottom: 16px; }
 .unauthorized__title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
@@ -275,7 +276,7 @@ async function promoteGuest(guest) {
 }
 
 .hero--secondary { background: var(--secondary); }
-.status-bar { height: 44px; }
+.status-bar { height: var(--status-bar-height, env(safe-area-inset-top, 44px)); }
 .hero__content { padding: 4px 22px 30px; color: var(--on-secondary); }
 .hero__eyebrow {
   font-size: 11px; font-weight: 600; text-transform: uppercase;

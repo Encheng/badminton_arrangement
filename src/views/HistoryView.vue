@@ -62,7 +62,7 @@ const avgAttendance = computed(() => {
 .view { min-height: 100dvh; display: flex; flex-direction: column; }
 .hero--variant { background: var(--primary-variant); }
 
-.status-bar { height: 44px; }
+.status-bar { height: var(--status-bar-height, env(safe-area-inset-top, 44px)); }
 .hero__content { padding: 4px 22px 30px; color: var(--on-primary); }
 .hero__eyebrow {
   font-size: 11px; font-weight: 600; text-transform: uppercase;
