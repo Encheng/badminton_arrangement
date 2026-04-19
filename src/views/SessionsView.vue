@@ -40,6 +40,7 @@
               :editable="store.isAdmin"
               @edit="editSession"
               @delete="confirmDeleteSession"
+              @copy="copySession"
             />
           </ol>
         </section>
@@ -115,6 +116,7 @@
               :editable="store.isAdmin"
               @edit="editSession"
               @delete="confirmDeleteSession"
+              @copy="copySession"
             />
           </ol>
 
@@ -605,6 +607,26 @@ async function handleDeleteSession() {
   } finally {
     deleting.value = false
   }
+}
+
+// --- 複製場次 ---
+function copySession(session) {
+  // 預填成員
+  const memberIds = session.attendances
+    .filter(a => a.type === 'member')
+    .map(a => a.member_id)
+  newCheckedIds.value = new Set(memberIds)
+
+  // 預填臨時成員
+  newGuests.value = session.attendances
+    .filter(a => a.type === 'guest')
+    .map(a => ({ name: a.name, guest_key: a.guest_key }))
+
+  // 自動計算下一個場次日期
+  newSessionDate.value = calcNextSessionDate()
+
+  addError.value = ''
+  showAddModal.value = true
 }
 
 // --- 新增場次 modal ---

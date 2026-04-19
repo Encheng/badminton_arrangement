@@ -23,6 +23,13 @@
       </span>
       <div v-if="editable" class="card__actions">
         <button
+          class="card__copy-btn"
+          aria-label="複製此場次"
+          @click="$emit('copy', session)"
+        >
+          複製
+        </button>
+        <button
           class="card__edit-btn"
           aria-label="編輯此場次"
           @click="$emit('edit', session)"
@@ -52,7 +59,7 @@ const props = defineProps({
   editable:  { type: Boolean, default: false },
 })
 
-defineEmits(['edit', 'delete'])
+defineEmits(['edit', 'delete', 'copy'])
 
 const formattedDate = computed(() => {
   const d = new Date(props.session.date + 'T00:00:00')
@@ -140,6 +147,22 @@ const nameList = computed(() =>
   display: flex;
   gap: 6px;
 }
+.card__copy-btn {
+  background: none;
+  border: 1.5px solid var(--secondary-variant, #018786);
+  color: var(--secondary-variant, #018786);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.card__copy-btn:active {
+  background: var(--secondary-variant, #018786);
+  color: #fff;
+}
 .card__edit-btn {
   background: none;
   border: 1.5px solid var(--primary);
@@ -173,6 +196,10 @@ const nameList = computed(() =>
   color: #fff;
 }
 @media (hover: hover) {
+  .card__copy-btn:hover {
+    background: var(--secondary-variant, #018786);
+    color: #fff;
+  }
   .card__edit-btn:hover {
     background: var(--primary);
     color: var(--on-primary);
