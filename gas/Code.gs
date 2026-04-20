@@ -33,6 +33,7 @@ function doPost(e) {
     else if (action === 'deleteSession') data = _deleteSession(ss, body)
     else if (action === 'saveMember')    data = _saveMember(ss, body)
     else if (action === 'promoteGuest')  data = _promoteGuest(ss, body)
+    else if (action === 'demoteMember')  data = _demoteMember(ss, body)
     else return _json({ status: 'error', message: 'Unknown action: ' + action })
     return _json({ status: 'ok', data })
   } catch (err) {
@@ -208,4 +209,44 @@ function _promoteGuest(ss, body) {
     }
   }
   return { updated: updated }
+}
+
+function _demoteMember(ss, body) {
+  var memberId = body.member_id
+  if (!memberId) throw new Error('Missing member_id')
+
+  // 取得成員名稱
+  var memSheet = ss.getSheetByName('members')
+  var memData  = memSheet.getDataRange().getValues()
+  var memberName = null
+  var memberRow  = -1
+  for (var i = 1; i < memData.length; i++) {
+    if (memData[i][0] === memberId) {
+      memberName = memData[i][1]
+      memberRow  = i + 1
+      break
+    }
+  }
+  if (!memberName) throw new Error('Member not found')
+
+  // 產生 guest_key（與前端一致）
+  var guest_key = memberName.toLowerCase().replace(/\s+/g, '_') + '_' + new Date().getFullYear()
+
+  // 更新出席記錄：member → guest
+  var attSheet = ss.getSheetByName('attendances')
+  var attData  = attSheet.getDataRange().getValues()
+  var updated  = 0
+  for (var j = 1; j < attData.length; j++) {
+    if (attData[j][2] === memberId && attData[j][4] === 'member') {
+      attSheet.getRange(j + 1, 3).setValue('')        // 清除 member_id
+      attSheet.getRange(j + 1, 5).setValue('guest')   // type → guest
+      attSheet.getRange(j + 1, 6).setValue(guest_key) // 設定 guest_key
+      updated++
+    }
+  }
+
+  // 刪除成員
+  memSheet.deleteRow(memberRow)
+
+  return { deleted: memberId, guest_key: guest_key, updated: updated }
 }

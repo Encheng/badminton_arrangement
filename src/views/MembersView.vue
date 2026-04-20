@@ -61,6 +61,13 @@
           >
             <span class="member-row__name">{{ m.name }}</span>
             <button
+              class="member-row__btn member-row__btn--demote"
+              :disabled="saving.has(m.id)"
+              @click="demoteMember(m)"
+            >
+              {{ saving.has(m.id) ? '處理中…' : '轉為臨時' }}
+            </button>
+            <button
               class="member-row__btn member-row__btn--danger"
               :disabled="saving.has(m.id)"
               @click="toggleMemberActive(m)"
@@ -197,6 +204,21 @@ async function addNewMember() {
     addError.value = `新增失敗：${err.message}`
   } finally {
     addingMember.value = false
+  }
+}
+
+async function demoteMember(member) {
+  if (!confirm(`確定要將「${member.name}」轉為臨時人員嗎？歷史出席記錄將改為訪客身份。`)) return
+  saving.value = new Set([...saving.value, member.id])
+  try {
+    await api.demoteMember(store.adminToken, member.id)
+    await store.init()
+  } catch (err) {
+    addError.value = `轉換失敗：${err.message}`
+  } finally {
+    const next = new Set(saving.value)
+    next.delete(member.id)
+    saving.value = next
   }
 }
 
@@ -360,6 +382,10 @@ async function promoteGuest(guest) {
 .member-row__btn:disabled { opacity: 0.5; cursor: default; }
 .member-row__btn:active:not(:disabled) { transform: scale(0.96); }
 
+.member-row__btn--demote {
+  background: rgba(255, 152, 0, 0.1);
+  color: #e65100;
+}
 .member-row__btn--danger {
   background: rgba(176, 0, 32, 0.08);
   color: var(--error);

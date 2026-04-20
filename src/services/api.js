@@ -31,4 +31,5 @@ export const api = {
   deleteSession: (token, session_id)             => gasPost('deleteSession', { admin_token: token, session_id }),
   saveMember:   (token, member)                 => gasPost('saveMember',   { admin_token: token, ...member }),
   promoteGuest: (token, guest_key, member_id)   => gasPost('promoteGuest', { admin_token: token, guest_key, member_id }),
+  demoteMember: (token, member_id)              => gasPost('demoteMember', { admin_token: token, member_id }),
 }
