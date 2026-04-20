@@ -842,12 +842,19 @@ async function handleAddSession() {
   font-variant-numeric: tabular-nums;
 }
 
-.filter-bar { margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+.filter-bar {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
 
 .filter-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .filter-pills {
@@ -858,6 +865,7 @@ async function handleAddSession() {
   -webkit-overflow-scrolling: touch;
   flex: 1;
   min-width: 0;
+  max-width: 100%;
 }
 .filter-pills::-webkit-scrollbar { display: none; }
 
@@ -899,9 +907,12 @@ async function handleAddSession() {
   font-size: 12px;
   color: var(--text-secondary);
   cursor: pointer;
-  width: 40px;
+  width: 36px;
+  max-width: 40px;
   opacity: 0.7;
   transition: opacity 0.15s ease;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .filter-jump__input:focus,
 .filter-jump__input:hover { opacity: 1; border-color: var(--primary); }
