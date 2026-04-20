@@ -3,7 +3,7 @@
   <div class="view">
     <!-- 未授權 — 管理員登入 -->
     <div v-if="!store.isAdmin" class="unauthorized">
-      <p class="unauthorized__icon">🔒</p>
+      <p class="unauthorized__icon"><Lock :size="56" :stroke-width="1.5" /></p>
       <p class="unauthorized__title">管理員登入</p>
       <p class="unauthorized__sub">請輸入管理員密碼以使用管理功能</p>
 
@@ -147,6 +147,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { motion } from 'motion-v'
+import { Lock } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
 import { api } from '../services/api.js'
 
@@ -247,7 +248,7 @@ async function promoteGuest(guest) {
   min-height: 100dvh; text-align: center;
   padding: calc(32px + env(safe-area-inset-top, 0px)) 32px 32px;
 }
-.unauthorized__icon  { font-size: 64px; margin-bottom: 16px; }
+.unauthorized__icon  { margin-bottom: 16px; color: var(--text-tertiary); }
 .unauthorized__title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
 .unauthorized__sub   { font-size: 14px; color: var(--text-tertiary); }
 

@@ -1,5 +1,6 @@
 <!-- src/views/WeekView.vue -->
 <template>
+  <PullRefresh @refresh="onRefresh">
   <div class="view">
     <!-- Hero -->
     <motion.header
@@ -16,7 +17,7 @@
         <h1 class="hero__title">
           {{ sessionDateLabel }}<br>{{ config.time_start }}–{{ config.time_end }}
         </h1>
-        <p class="hero__meta">📍 {{ config.venue_name }}</p>
+        <p class="hero__meta"><MapPin :size="13" :stroke-width="2.5" class="hero__meta-icon" /> {{ config.venue_name }}</p>
       </div>
     </motion.header>
 
@@ -35,7 +36,7 @@
 
       <!-- 尚未設定 -->
       <div v-else-if="!currentSession" class="empty-state">
-        <p class="empty-state__icon">🏸</p>
+        <p class="empty-state__icon"><CalendarOff :size="48" :stroke-width="1.5" /></p>
         <p class="empty-state__title">目前無即將到來的場次</p>
         <p class="empty-state__sub">管理員稍後會更新…</p>
       </div>
@@ -84,21 +85,29 @@
       :whilePress="{ scale: 0.9 }"
       @click="editCurrentSession"
     >
-      ✏️
+      <Pencil :size="22" :stroke-width="2.2" />
     </motion.button>
   </div>
+  </PullRefresh>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { motion } from 'motion-v'
+import { MapPin, CalendarOff, Pencil } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
 import { getTodayStr } from '../utils/date.js'
 import AttendeeChip from '../components/AttendeeChip.vue'
+import PullRefresh from '../components/PullRefresh.vue'
 
 const store  = useAppStore()
 const router = useRouter()
+
+async function onRefresh({ done, fail }) {
+  try { await store.refresh(); done() }
+  catch (e) { fail(e) }
+}
 
 function editCurrentSession() {
   router.push({ path: '/sessions', query: { date: currentSession.value.date } })
@@ -167,7 +176,8 @@ const lastUpdatedLabel = computed(() => {
   letter-spacing: -0.6px; line-height: 1.15;
   text-wrap: balance; margin-bottom: 6px;
 }
-.hero__meta { font-size: 13px; opacity: 0.8; }
+.hero__meta { font-size: 13px; opacity: 0.8; display: flex; align-items: center; gap: 4px; }
+.hero__meta-icon { flex-shrink: 0; }
 
 .sheet {
   flex: 1;
@@ -205,7 +215,7 @@ const lastUpdatedLabel = computed(() => {
   text-align: center;
   padding: 48px 16px;
 }
-.empty-state__icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state__icon { margin-bottom: 12px; color: var(--text-tertiary); }
 .empty-state__title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
 .empty-state__sub   { font-size: 13px; color: var(--text-tertiary); }
 

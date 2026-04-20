@@ -11,7 +11,7 @@
       :aria-current="isActive(tab.path) ? 'page' : undefined"
       @click="router.push(tab.path)"
     >
-      <span class="tab-icon" aria-hidden="true">{{ tab.icon }}</span>
+      <component :is="tab.icon" class="tab-icon" aria-hidden="true" :size="22" :stroke-width="2.2" />
       <span>{{ tab.label }}</span>
     </button>
   </nav>
@@ -20,16 +20,17 @@
 <script setup>
 import { useRouter, useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app.js'
+import { CalendarDays, ClipboardList, Trophy, Settings } from 'lucide-vue-next'
 
 const router = useRouter()
 const route  = useRoute()
 const store  = useAppStore()
 
 const tabs = [
-  { path: '/',         icon: '🏸', label: '本週' },
-  { path: '/sessions', icon: '📋', label: '場次' },
-  { path: '/stats',    icon: '🏆', label: '榮譽' },
-  { path: '/members',  icon: '⚙️', label: '管理' },
+  { path: '/',         icon: CalendarDays,  label: '本週' },
+  { path: '/sessions', icon: ClipboardList, label: '場次' },
+  { path: '/stats',    icon: Trophy,        label: '榮譽' },
+  { path: '/members',  icon: Settings,      label: '管理' },
 ]
 
 function isActive(path) {
@@ -94,5 +95,5 @@ function isActive(path) {
   background: currentColor;
 }
 
-.tab-icon { font-size: 22px; line-height: 1; }
+.tab-icon { width: 22px; height: 22px; }
 </style>

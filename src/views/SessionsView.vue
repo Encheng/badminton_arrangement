@@ -1,5 +1,6 @@
 <!-- src/views/SessionsView.vue -->
 <template>
+  <PullRefresh @refresh="onRefresh">
   <div class="view">
     <motion.header
       class="hero hero--variant"
@@ -22,7 +23,7 @@
       :transition="{ duration: 0.5, ease: 'easeOut', delay: 0.12 }"
     >
       <div v-if="!allSessions.length" class="empty-state">
-        <p class="empty-state__icon">📋</p>
+        <p class="empty-state__icon"><ClipboardList :size="48" :stroke-width="1.5" /></p>
         <p class="empty-state__title">尚無場次記錄</p>
       </div>
 
@@ -144,7 +145,7 @@
       :whilePress="{ scale: 0.9 }"
       @click="showAddModal = true"
     >
-      +
+      <Plus :size="28" :stroke-width="2" />
     </motion.button>
 
     <!-- 新增場次 Modal -->
@@ -339,12 +340,14 @@
         </AnimatePresence>
       </Teleport>
   </div>
+  </PullRefresh>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { motion, AnimatePresence } from 'motion-v'
+import { ClipboardList, Plus } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
 import { getTodayStr, getComingSaturday, getNextSaturdayAfter } from '../utils/date.js'
 import { getCurrentStreak } from '../utils/stats.js'
@@ -352,11 +355,17 @@ import { api } from '../services/api.js'
 import SessionCard from '../components/SessionCard.vue'
 import MemberCheckItem from '../components/MemberCheckItem.vue'
 import GuestAutocomplete from '../components/GuestAutocomplete.vue'
+import PullRefresh from '../components/PullRefresh.vue'
 
 const store = useAppStore()
 const route = useRoute()
 
 const todayStr = getTodayStr()
+
+async function onRefresh({ done, fail }) {
+  try { await store.refresh(); done() }
+  catch (e) { fail(e) }
+}
 
 // --- helpers ---
 function makeGuestKey(name) {
@@ -725,7 +734,7 @@ async function handleAddSession() {
 .list { display: flex; flex-direction: column; gap: 10px; }
 
 .empty-state { text-align: center; padding: 48px 16px; }
-.empty-state__icon  { font-size: 48px; margin-bottom: 12px; }
+.empty-state__icon  { margin-bottom: 12px; color: var(--text-tertiary); }
 .empty-state__title { font-size: 16px; font-weight: 600; }
 
 /* FAB */

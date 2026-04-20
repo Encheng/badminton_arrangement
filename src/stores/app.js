@@ -67,24 +67,33 @@ export const useAppStore = defineStore('app', () => {
     return val
   }
 
+  async function _fetchAll() {
+    const [cfg, mems, sess] = await Promise.all([
+      api.getConfig(),
+      api.getMembers(),
+      api.getSessions(),
+    ])
+    if (cfg.time_start) cfg.time_start = _normalizeTime(cfg.time_start)
+    if (cfg.time_end)   cfg.time_end   = _normalizeTime(cfg.time_end)
+    sess.forEach(s => { s.date = _normalizeDate(s.date) })
+    config.value   = cfg
+    members.value  = mems
+    sessions.value = sess
+  }
+
   async function init() {
     loading.value = true
     try {
-      const [cfg, mems, sess] = await Promise.all([
-        api.getConfig(),
-        api.getMembers(),
-        api.getSessions(),
-      ])
-      if (cfg.time_start) cfg.time_start = _normalizeTime(cfg.time_start)
-      if (cfg.time_end)   cfg.time_end   = _normalizeTime(cfg.time_end)
-      sess.forEach(s => { s.date = _normalizeDate(s.date) })
-      config.value   = cfg
-      members.value  = mems
-      sessions.value = sess
+      await _fetchAll()
     } finally {
       loading.value = false
     }
   }
 
-  return { config, members, sessions, loading, isAdmin, adminToken, activeMembers, allUniqueGuests, setAdminToken, clearAdminToken, init }
+  /** 重新整理資料（不顯示全螢幕 loading） */
+  async function refresh() {
+    await _fetchAll()
+  }
+
+  return { config, members, sessions, loading, isAdmin, adminToken, activeMembers, allUniqueGuests, setAdminToken, clearAdminToken, init, refresh }
 })

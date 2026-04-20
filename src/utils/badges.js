@@ -30,49 +30,57 @@ function isAnnualTop(memberId, sessions, members) {
 export const BADGE_DEFINITIONS = [
   {
     id: 'streak_5',
-    icon: '🔥',
+    icon: 'Flame',
+    color: '#F97316',
     name: '連續 5 週',
     check: (id, sessions) => getCurrentStreak(id, sessions) >= 5,
   },
   {
     id: 'count_10',
-    icon: '💯',
+    icon: 'Hash',
+    color: '#6366F1',
     name: '出席 10 次',
     check: (id, sessions) => getAttendanceCount(id, sessions) >= 10,
   },
   {
     id: 'count_20',
-    icon: '⭐',
+    icon: 'Star',
+    color: '#EAB308',
     name: '出席 20 次',
     check: (id, sessions) => getAttendanceCount(id, sessions) >= 20,
   },
   {
     id: 'count_50',
-    icon: '💎',
+    icon: 'Gem',
+    color: '#06B6D4',
     name: '出席 50 次',
     check: (id, sessions) => getAttendanceCount(id, sessions) >= 50,
   },
   {
     id: 'streak_10',
-    icon: '🚀',
+    icon: 'Rocket',
+    color: '#EC4899',
     name: '連續 10 週',
     check: (id, sessions) => getCurrentStreak(id, sessions) >= 10,
   },
   {
     id: 'monthly_4',
-    icon: '🎯',
+    icon: 'Target',
+    color: '#EF4444',
     name: '全勤一個月',
     check: (id, sessions) => hasMonthlyPerfectAttendance(id, sessions),
   },
   {
     id: 'annual_top',
-    icon: '🏅',
+    icon: 'Medal',
+    color: '#FFD700',
     name: '最佳球員',
     check: (id, sessions, members) => isAnnualTop(id, sessions, members),
   },
   {
     id: 'week_champ',
-    icon: '👑',
+    icon: 'Crown',
+    color: '#A855F7',
     name: '週冠軍',
     check: (id, sessions, members) => {
       if (!sessions.length) return false
@@ -93,6 +101,7 @@ export function getBadges(memberId, sessions, members) {
   return BADGE_DEFINITIONS.map(def => ({
     id: def.id,
     icon: def.icon,
+    color: def.color,
     name: def.name,
     unlocked: def.check(memberId, sessions, members),
   }))

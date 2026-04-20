@@ -15,7 +15,9 @@
         :transition="{ type: 'spring', stiffness: 350, damping: 20, delay: i * 0.05 }"
         :whileHover="badge.unlocked ? { scale: 1.1, y: -2 } : {}"
       >
-        <div class="badge__icon" aria-hidden="true">{{ badge.icon }}</div>
+        <div class="badge__icon" aria-hidden="true" :style="badge.unlocked ? { color: badge.color } : {}">
+          <component :is="iconMap[badge.icon]" :size="22" :stroke-width="2" />
+        </div>
         <div class="badge__name">{{ badge.name }}</div>
       </motion.div>
     </div>
@@ -25,8 +27,11 @@
 <script setup>
 import { computed } from 'vue'
 import { motion } from 'motion-v'
+import { Flame, Hash, Star, Gem, Rocket, Target, Medal, Crown } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
 import { getBadges } from '../utils/badges.js'
+
+const iconMap = { Flame, Hash, Star, Gem, Rocket, Target, Medal, Crown }
 
 const props = defineProps({
   memberId: { type: String, required: true },
@@ -59,6 +64,6 @@ const badges = computed(() =>
   border: 1px solid rgba(98, 0, 238, 0.1);
   box-shadow: var(--shadow-sm);
 }
-.badge__icon { font-size: 22px; margin-bottom: 4px; }
+.badge__icon { margin-bottom: 4px; display: flex; justify-content: center; }
 .badge__name { font-size: 10px; color: var(--text-secondary); line-height: 1.3; }
 </style>

@@ -1,5 +1,6 @@
 <!-- src/views/StatsView.vue -->
 <template>
+  <PullRefresh @refresh="onRefresh">
   <div class="view">
     <motion.header
       class="hero hero--sec-variant"
@@ -22,7 +23,7 @@
       :transition="{ duration: 0.5, ease: 'easeOut', delay: 0.12 }"
     >
       <div v-if="!leaderboard.length" class="empty-state">
-        <p class="empty-state__icon">🏆</p>
+        <p class="empty-state__icon"><Trophy :size="48" :stroke-width="1.5" /></p>
         <p class="empty-state__title">尚無出席記錄</p>
       </div>
       <template v-else>
@@ -58,17 +59,25 @@
       </template>
     </motion.main>
   </div>
+  </PullRefresh>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { motion } from 'motion-v'
+import { Trophy } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
 import { buildLeaderboard } from '../utils/stats.js'
 import RankCard from '../components/RankCard.vue'
 import BadgeGrid from '../components/BadgeGrid.vue'
+import PullRefresh from '../components/PullRefresh.vue'
 
 const store = useAppStore()
+
+async function onRefresh({ done, fail }) {
+  try { await store.refresh(); done() }
+  catch (e) { fail(e) }
+}
 
 const leaderboard = computed(() =>
   buildLeaderboard(store.members, store.sessions)
@@ -135,6 +144,6 @@ watch(() => store.activeMembers, (members) => {
 .empty-state {
   text-align: center; padding: 48px 16px;
 }
-.empty-state__icon  { font-size: 48px; margin-bottom: 12px; }
+.empty-state__icon  { margin-bottom: 12px; color: var(--text-tertiary); }
 .empty-state__title { font-size: 16px; font-weight: 600; }
 </style>

@@ -8,7 +8,10 @@
     :transition="{ duration: 0.35, ease: 'easeOut', delay: rank * 0.06 }"
     :whileHover="{ x: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }"
   >
-    <span class="rank-icon" aria-hidden="true">{{ rankIcon }}</span>
+    <span class="rank-icon" aria-hidden="true">
+      <Medal v-if="rank <= 3" :size="22" :stroke-width="2.2" :style="{ color: medalColor }" />
+      <span v-else class="rank-num">{{ rank }}</span>
+    </span>
     <div class="rank-body">
       <span class="rank-name">{{ member.name }}</span>
       <div class="rank-bar-bg" role="presentation">
@@ -29,6 +32,7 @@
 <script setup>
 import { computed } from 'vue'
 import { motion } from 'motion-v'
+import { Medal } from 'lucide-vue-next'
 
 const props = defineProps({
   rank:     { type: Number, required: true },
@@ -37,9 +41,9 @@ const props = defineProps({
   maxCount: { type: Number, required: true },
 })
 
-const rankIcon = computed(() => {
-  const icons = { 1: '🥇', 2: '🥈', 3: '🥉' }
-  return icons[props.rank] ?? `${props.rank}.`
+const medalColor = computed(() => {
+  const colors = { 1: '#FFD700', 2: '#A0AEC0', 3: '#CD7F32' }
+  return colors[props.rank]
 })
 
 const barWidth = computed(() =>
@@ -63,7 +67,8 @@ const barWidth = computed(() =>
   background: var(--surface-secondary);
   border-color: rgba(3, 218, 198, 0.3);
 }
-.rank-icon { font-size: 22px; width: 28px; text-align: center; flex-shrink: 0; }
+.rank-icon { width: 28px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.rank-num { font-size: 14px; font-weight: 800; color: var(--text-tertiary); }
 .rank-body { flex: 1; min-width: 0; }
 .rank-name { font-size: 15px; font-weight: 700; color: var(--text-primary); display: block; }
 .rank-bar-bg { height: 4px; background: #eeeeee; border-radius: 4px; margin-top: 4px; }
