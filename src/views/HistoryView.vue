@@ -21,7 +21,17 @@
       :animate="{ opacity: 1, y: 0 }"
       :transition="{ duration: 0.5, ease: 'easeOut', delay: 0.12 }"
     >
-      <div v-if="!pastSessions.length" class="empty-state">
+      <!-- 骨架屏 -->
+      <div v-if="store.loading" class="skeleton-state" aria-label="載入中">
+        <div v-for="n in 4" :key="n" class="skeleton-card">
+          <SkeletonBlock width="120px" height="12px" radius="6px" />
+          <SkeletonBlock width="100%" height="14px" radius="6px" style="margin-top: 6px;" />
+          <SkeletonBlock width="50%" height="14px" radius="6px" style="margin-top: 4px;" />
+          <SkeletonBlock width="70px" height="12px" radius="6px" style="margin-top: 8px;" />
+        </div>
+      </div>
+
+      <div v-else-if="!pastSessions.length" class="empty-state">
         <p class="empty-state__icon">📋</p>
         <p class="empty-state__title">尚無歷史記錄</p>
       </div>
@@ -41,6 +51,7 @@ import { computed } from 'vue'
 import { motion } from 'motion-v'
 import { useAppStore } from '../stores/app.js'
 import HistoryCard from '../components/HistoryCard.vue'
+import SkeletonBlock from '../components/SkeletonBlock.vue'
 
 const store = useAppStore()
 
@@ -84,6 +95,14 @@ const avgAttendance = computed(() => {
 }
 
 .list { display: flex; flex-direction: column; gap: 10px; }
+
+.skeleton-state { display: flex; flex-direction: column; gap: 10px; }
+.skeleton-card {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+}
 
 .empty-state {
   text-align: center; padding: 48px 16px;

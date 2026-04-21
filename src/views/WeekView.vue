@@ -28,10 +28,23 @@
       :animate="{ opacity: 1, y: 0 }"
       :transition="{ duration: 0.5, ease: 'easeOut', delay: 0.12 }"
     >
-      <!-- 載入中 -->
-      <div v-if="store.loading" class="loading-state">
-        <div class="spinner" aria-label="載入中"></div>
-        <p class="loading-state__text">載入資料中…</p>
+      <!-- 骨架屏 -->
+      <div v-if="store.loading" class="skeleton-state" aria-label="載入中">
+        <!-- count row skeleton -->
+        <div class="count-row">
+          <SkeletonBlock width="44px" height="40px" radius="8px" />
+          <div style="flex: 1;">
+            <SkeletonBlock width="80px" height="14px" radius="6px" />
+            <SkeletonBlock width="120px" height="12px" radius="6px" style="margin-top: 6px;" />
+          </div>
+        </div>
+        <!-- attendee grid skeleton -->
+        <div class="attendee-grid">
+          <div v-for="n in 8" :key="n" class="skeleton-chip">
+            <SkeletonBlock width="40px" height="40px" radius="50%" />
+            <SkeletonBlock width="80%" height="12px" radius="6px" />
+          </div>
+        </div>
       </div>
 
       <!-- 尚未設定 -->
@@ -99,6 +112,7 @@ import { MapPin, CalendarOff, Pencil } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
 import { getTodayStr } from '../utils/date.js'
 import AttendeeChip from '../components/AttendeeChip.vue'
+import SkeletonBlock from '../components/SkeletonBlock.vue'
 import PullRefresh from '../components/PullRefresh.vue'
 
 const store  = useAppStore()
@@ -187,28 +201,16 @@ const lastUpdatedLabel = computed(() => {
   margin-top: -20px;
 }
 
-.loading-state {
-  text-align: center;
-  padding: 48px 16px;
+.skeleton-state { display: flex; flex-direction: column; gap: 14px; }
+.skeleton-chip {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-}
-.loading-state__text {
-  font-size: 14px;
-  color: var(--text-tertiary);
-}
-.spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid rgba(98, 0, 238, 0.15);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  gap: 6px;
+  padding: 12px 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 
 .empty-state {

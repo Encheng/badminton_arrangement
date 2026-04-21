@@ -22,7 +22,19 @@
       :animate="{ opacity: 1, y: 0 }"
       :transition="{ duration: 0.5, ease: 'easeOut', delay: 0.12 }"
     >
-      <div v-if="!leaderboard.length" class="empty-state">
+      <!-- 骨架屏 -->
+      <div v-if="store.loading" class="skeleton-state" aria-label="載入中">
+        <div v-for="n in 5" :key="n" class="skeleton-rank">
+          <SkeletonBlock width="28px" height="22px" radius="6px" />
+          <div style="flex: 1; min-width: 0;">
+            <SkeletonBlock :width="60 + n * 8 + 'px'" height="14px" radius="6px" />
+            <SkeletonBlock width="100%" height="4px" radius="4px" style="margin-top: 6px;" />
+          </div>
+          <SkeletonBlock width="36px" height="13px" radius="6px" />
+        </div>
+      </div>
+
+      <div v-else-if="!leaderboard.length" class="empty-state">
         <p class="empty-state__icon"><Trophy :size="48" :stroke-width="1.5" /></p>
         <p class="empty-state__title">尚無出席記錄</p>
       </div>
@@ -69,6 +81,7 @@ import { Trophy } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
 import { buildLeaderboard } from '../utils/stats.js'
 import RankCard from '../components/RankCard.vue'
+import SkeletonBlock from '../components/SkeletonBlock.vue'
 import BadgeGrid from '../components/BadgeGrid.vue'
 import PullRefresh from '../components/PullRefresh.vue'
 
@@ -139,6 +152,17 @@ watch(() => store.activeMembers, (members) => {
 .member-select:focus-visible {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(98, 0, 238, 0.15);
+}
+
+.skeleton-state { display: flex; flex-direction: column; gap: 8px; }
+.skeleton-rank {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
 }
 
 .empty-state {

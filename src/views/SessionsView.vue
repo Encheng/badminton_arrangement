@@ -22,7 +22,18 @@
       :animate="{ opacity: 1, y: 0 }"
       :transition="{ duration: 0.5, ease: 'easeOut', delay: 0.12 }"
     >
-      <div v-if="!allSessions.length" class="empty-state">
+      <!-- 骨架屏 -->
+      <div v-if="store.loading" class="skeleton-state" aria-label="載入中">
+        <SkeletonBlock width="60px" height="12px" radius="6px" />
+        <div v-for="n in 3" :key="n" class="skeleton-card">
+          <SkeletonBlock width="120px" height="12px" radius="6px" />
+          <SkeletonBlock width="100%" height="14px" radius="6px" style="margin-top: 6px;" />
+          <SkeletonBlock width="60%" height="14px" radius="6px" style="margin-top: 4px;" />
+          <SkeletonBlock width="70px" height="12px" radius="6px" style="margin-top: 8px;" />
+        </div>
+      </div>
+
+      <div v-else-if="!allSessions.length" class="empty-state">
         <p class="empty-state__icon"><ClipboardList :size="48" :stroke-width="1.5" /></p>
         <p class="empty-state__title">尚無場次記錄</p>
       </div>
@@ -353,6 +364,7 @@ import { getTodayStr, getComingSaturday, getNextSaturdayAfter } from '../utils/d
 import { getCurrentStreak } from '../utils/stats.js'
 import { api } from '../services/api.js'
 import SessionCard from '../components/SessionCard.vue'
+import SkeletonBlock from '../components/SkeletonBlock.vue'
 import MemberCheckItem from '../components/MemberCheckItem.vue'
 import GuestAutocomplete from '../components/GuestAutocomplete.vue'
 import PullRefresh from '../components/PullRefresh.vue'
@@ -732,6 +744,14 @@ async function handleAddSession() {
 }
 
 .list { display: flex; flex-direction: column; gap: 10px; }
+
+.skeleton-state { display: flex; flex-direction: column; gap: 10px; }
+.skeleton-card {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+}
 
 .empty-state { text-align: center; padding: 48px 16px; }
 .empty-state__icon  { margin-bottom: 12px; color: var(--text-tertiary); }
