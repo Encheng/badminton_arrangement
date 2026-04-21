@@ -2,7 +2,6 @@
 <template>
   <motion.div
     class="attendee"
-    :class="type === 'guest' ? 'attendee--guest' : 'attendee--member'"
     role="listitem"
     :initial="{ opacity: 0, scale: 0.8 }"
     :animate="{ opacity: 1, scale: 1 }"
@@ -12,7 +11,6 @@
   >
     <div class="avatar" aria-hidden="true">{{ initial }}</div>
     <span class="name">{{ name }}</span>
-    <span v-if="type === 'guest'" class="badge">臨打</span>
   </motion.div>
 </template>
 
@@ -21,7 +19,6 @@ import { motion } from 'motion-v'
 
 const props = defineProps({
   name: { type: String, required: true },
-  type: { type: String, default: 'member' }, // 'member' | 'guest'
   delay: { type: Number, default: 0 },
 })
 
@@ -38,16 +35,8 @@ const initial = props.name.charAt(0).toUpperCase()
   border-radius: var(--radius-sm);
   cursor: default;
   min-width: 0;
-}
-
-.attendee--member {
   background: var(--surface);
   border: 1px solid rgba(98, 0, 238, 0.1);
-}
-
-.attendee--guest {
-  background: #fff5f5;
-  border: 1px solid rgba(176, 0, 32, 0.15);
 }
 
 .avatar {
@@ -64,10 +53,6 @@ const initial = props.name.charAt(0).toUpperCase()
   flex-shrink: 0;
 }
 
-.attendee--guest .avatar {
-  background: var(--error);
-}
-
 .name {
   font-size: 13px;
   font-weight: 600;
@@ -78,15 +63,5 @@ const initial = props.name.charAt(0).toUpperCase()
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
-}
-
-.badge {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--error);
-  background: rgba(176, 0, 32, 0.08);
-  padding: 1px 6px;
-  border-radius: 4px;
-  line-height: 1.4;
 }
 </style>

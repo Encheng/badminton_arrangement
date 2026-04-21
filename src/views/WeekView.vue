@@ -78,7 +78,6 @@
             v-for="(att, i) in attendees"
             :key="att.id"
             :name="att.name"
-            :type="att.type"
             :delay="i * 0.05"
           />
         </div>
