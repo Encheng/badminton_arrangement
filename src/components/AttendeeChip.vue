@@ -8,14 +8,37 @@
     :transition="{ type: 'spring', stiffness: 400, damping: 25, delay: delay }"
     :whileHover="{ scale: 1.06, y: -2 }"
     :whilePress="{ scale: 0.95 }"
+    @click="flip"
   >
-    <div class="avatar" aria-hidden="true">{{ initial }}</div>
+    <div class="flip-card" :class="{ flipped }">
+      <!-- Front: avatar -->
+      <div class="flip-front">
+        <div class="avatar" aria-hidden="true">{{ initial }}</div>
+      </div>
+      <!-- Back: cute animal -->
+      <div class="flip-back">
+        <CuteAnimal :animal="assignedAnimal" />
+      </div>
+    </div>
     <span class="name">{{ name }}</span>
   </motion.div>
 </template>
 
 <script setup>
+import { ref, computed } from 'vue'
 import { motion } from 'motion-v'
+import CuteAnimal from './CuteAnimal.vue'
+
+const ANIMALS = [
+  { id: 'cat', label: '小貓咪' },
+  { id: 'dog', label: '小狗狗' },
+  { id: 'penguin', label: '小企鵝' },
+  { id: 'rabbit', label: '小兔子' },
+  { id: 'bear', label: '小熊熊' },
+  { id: 'frog', label: '小青蛙' },
+  { id: 'chick', label: '小雞仔' },
+  { id: 'panda', label: '小熊貓' },
+]
 
 const props = defineProps({
   name: { type: String, required: true },
@@ -23,6 +46,15 @@ const props = defineProps({
 })
 
 const initial = props.name.charAt(0).toUpperCase()
+const flipped = ref(false)
+const assignedAnimal = ref(ANIMALS[Math.floor(Math.random() * ANIMALS.length)].id)
+
+function flip() {
+  if (!flipped.value) {
+    assignedAnimal.value = ANIMALS[Math.floor(Math.random() * ANIMALS.length)].id
+  }
+  flipped.value = !flipped.value
+}
 </script>
 
 <style scoped>
@@ -30,13 +62,44 @@ const initial = props.name.charAt(0).toUpperCase()
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
   padding: 12px 4px 10px;
+  gap: 6px;
   border-radius: var(--radius-sm);
-  cursor: default;
+  cursor: pointer;
   min-width: 0;
   background: var(--surface);
   border: 1px solid rgba(98, 0, 238, 0.1);
+  perspective: 600px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.flip-card {
+  width: 40px;
+  height: 40px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.flip-card.flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-front,
+.flip-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
 }
 
 .avatar {
@@ -64,4 +127,5 @@ const initial = props.name.charAt(0).toUpperCase()
   white-space: nowrap;
   max-width: 100%;
 }
+
 </style>
