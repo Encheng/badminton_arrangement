@@ -11,19 +11,33 @@
       {{ formattedDate }}
     </time>
     <p class="card__names">{{ nameList }}</p>
-    <p class="card__count">
-      {{ session.attendances.length }} 人出席
-    </p>
+    <div class="card__footer">
+      <p class="card__count">
+        {{ session.attendances.length }} 人出席
+      </p>
+      <button
+        v-if="videoCount > 0"
+        class="card__videos-btn"
+        @click.stop="$emit('view-videos')"
+      >
+        <Video :size="14" :stroke-width="2" />
+        {{ videoCount }} 支影片
+      </button>
+    </div>
   </motion.li>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { motion } from 'motion-v'
+import { Video } from 'lucide-vue-next'
 
 const props = defineProps({
-  session: { type: Object, required: true },
+  session:    { type: Object,  required: true },
+  videoCount: { type: Number,  default: 0 },
 })
+
+defineEmits(['view-videos'])
 
 const formattedDate = computed(() => {
   const d = new Date(props.session.date + 'T00:00:00')
@@ -55,5 +69,31 @@ const nameList = computed(() =>
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
+.card__footer {
+  display: flex; align-items: center; justify-content: space-between;
+}
 .card__count { font-size: 12px; font-weight: 700; color: var(--secondary-variant); font-variant-numeric: tabular-nums; }
+.card__videos-btn {
+  background: none;
+  border: 1.5px solid var(--primary);
+  color: var(--primary);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex; align-items: center; gap: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.card__videos-btn:active {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+@media (hover: hover) {
+  .card__videos-btn:hover {
+    background: var(--primary);
+    color: var(--on-primary);
+  }
+}
 </style>
