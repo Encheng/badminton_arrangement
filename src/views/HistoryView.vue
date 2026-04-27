@@ -77,14 +77,14 @@ const avgAttendance = computed(() => {
 })
 
 const videoModalOpen = ref(false)
-const selectedSession = ref(null)
+const selectedVideoSession = ref(null)
 function openVideoModal(session) {
-  selectedSession.value = session
+  selectedVideoSession.value = session
   videoModalOpen.value = true
 }
-const selectedSessionDate = computed(() => selectedSession.value?.date || '')
+const selectedSessionDate = computed(() => selectedVideoSession.value?.date || '')
 const selectedSessionVideos = computed(() =>
-  selectedSession.value ? store.videosByDate[selectedSession.value.date] || [] : []
+  selectedVideoSession.value ? store.videosByDate[selectedVideoSession.value.date] || [] : []
 )
 </script>
 
