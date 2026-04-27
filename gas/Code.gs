@@ -12,6 +12,7 @@ function doGet(e) {
     if      (action === 'getConfig')   data = _getConfig(ss, false)
     else if (action === 'getMembers')  data = _getMembers(ss)
     else if (action === 'getSessions') data = _getSessions(ss)
+    else if (action === 'getVideos')   data = _getVideos(ss)
     else return _json({ status: 'error', message: 'Unknown action: ' + action })
     return _json({ status: 'ok', data })
   } catch (err) {
@@ -249,4 +250,85 @@ function _demoteMember(ss, body) {
   memSheet.deleteRow(memberRow)
 
   return { deleted: memberId, guest_key: guest_key, updated: updated }
+}
+
+function _fetchYouTubeRss(channelId) {
+  const url = 'https://www.youtube.com/feeds/videos.xml?channel_id=' + channelId
+  const resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true })
+  if (resp.getResponseCode() !== 200) {
+    throw new Error('RSS fetch failed: ' + resp.getResponseCode())
+  }
+  const xml = XmlService.parse(resp.getContentText())
+  const root = xml.getRootElement()
+  const ns = XmlService.getNamespace('http://www.w3.org/2005/Atom')
+  const ytNs = XmlService.getNamespace('yt', 'http://www.youtube.com/xml/schemas/2015')
+
+  return root.getChildren('entry', ns).map(function(entry) {
+    return {
+      video_id:     entry.getChild('videoId', ytNs).getText(),
+      title:        entry.getChild('title', ns).getText(),
+      published_at: entry.getChild('published', ns).getText(),
+    }
+  })
+}
+
+function _createVideosSheet(ss) {
+  const sheet = ss.insertSheet('videos')
+  sheet.appendRow(['video_id', 'session_date', 'match_no', 'title', 'published_at', 'synced_at'])
+  return sheet
+}
+
+function _syncVideos(ss) {
+  const config = _getConfig(ss, false)
+  const channelId = config.youtube_channel_id
+  if (!channelId) return { synced: 0, skipped: 0 }
+
+  const sheet = ss.getSheetByName('videos') || _createVideosSheet(ss)
+  const existingRows = sheet.getDataRange().getValues().slice(1)
+  const existingIds = {}
+  existingRows.forEach(function(r) { existingIds[r[0]] = true })
+
+  const entries = _fetchYouTubeRss(channelId)
+  const now = new Date().toISOString()
+  const TITLE_RE = /^(\d{8})\s.+\s(\d+)$/
+
+  let synced = 0, skipped = 0
+  entries.forEach(function(e) {
+    if (existingIds[e.video_id]) { skipped++; return }
+    const m = e.title.match(TITLE_RE)
+    if (!m) { skipped++; return }
+    const dateStr = m[1].slice(0,4) + '-' + m[1].slice(4,6) + '-' + m[1].slice(6,8)
+    if (isNaN(new Date(dateStr).getTime())) { skipped++; return }
+    sheet.appendRow([
+      e.video_id, dateStr, Number(m[2]),
+      e.title, e.published_at, now
+    ])
+    synced++
+  })
+  return { synced: synced, skipped: skipped }
+}
+
+function _getVideos(ss) {
+  try {
+    _syncVideos(ss)
+  } catch (err) {
+    console.error('Video sync failed: ' + err.message)
+  }
+  const sheet = ss.getSheetByName('videos')
+  if (!sheet) return []
+  const rows = sheet.getDataRange().getValues().slice(1)
+  return rows
+    .map(function(r) {
+      return {
+        video_id:     r[0],
+        session_date: _formatDate(r[1]),
+        match_no:     Number(r[2]),
+        title:        r[3],
+        published_at: String(r[4] || ''),
+      }
+    })
+    .sort(function(a, b) {
+      if (a.session_date !== b.session_date) return b.session_date.localeCompare(a.session_date)
+      return a.match_no - b.match_no
+    })
 }
