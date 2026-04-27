@@ -57,3 +57,20 @@ describe('api.saveSession', () => {
     )
   })
 })
+
+describe('api.getVideos', () => {
+  it('calls GET with action=getVideos and returns data', async () => {
+    const mockData = [
+      { video_id: 'abc123', session_date: '2026-04-18', match_no: 1, title: '20260418 ... 1', published_at: '2026-04-21T02:29:07Z' },
+    ]
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: 'ok', data: mockData }),
+    })
+
+    const result = await api.getVideos()
+
+    expect(fetch).toHaveBeenCalledWith(`${FAKE_URL}?action=getVideos`)
+    expect(result).toEqual(mockData)
+  })
+})

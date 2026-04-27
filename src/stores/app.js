@@ -7,6 +7,7 @@ export const useAppStore = defineStore('app', () => {
   const config   = ref({})
   const members  = ref([])
   const sessions = ref([])
+  const videos   = ref([])
   const loading  = ref(true)
   const _token   = ref(localStorage.getItem('admin_token') || null)
 
@@ -30,6 +31,14 @@ export const useAppStore = defineStore('app', () => {
       }
     }
     return Array.from(guestMap.values())
+  })
+
+  const videosByDate = computed(() => {
+    const map = {}
+    for (const v of videos.value) {
+      (map[v.session_date] ||= []).push(v)
+    }
+    return map
   })
 
   function setAdminToken(token) {
@@ -68,10 +77,14 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function _fetchAll() {
-    const [cfg, mems, sess] = await Promise.all([
+    const [cfg, mems, sess, vids] = await Promise.all([
       api.getConfig(),
       api.getMembers(),
       api.getSessions(),
+      api.getVideos().catch(err => {
+        console.error('Videos fetch failed:', err)
+        return []
+      }),
     ])
     if (cfg.time_start) cfg.time_start = _normalizeTime(cfg.time_start)
     if (cfg.time_end)   cfg.time_end   = _normalizeTime(cfg.time_end)
@@ -79,6 +92,7 @@ export const useAppStore = defineStore('app', () => {
     config.value   = cfg
     members.value  = mems
     sessions.value = sess
+    videos.value   = vids
   }
 
   async function init() {
@@ -95,5 +109,5 @@ export const useAppStore = defineStore('app', () => {
     await _fetchAll()
   }
 
-  return { config, members, sessions, loading, isAdmin, adminToken, activeMembers, allUniqueGuests, setAdminToken, clearAdminToken, init, refresh }
+  return { config, members, sessions, videos, loading, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, setAdminToken, clearAdminToken, init, refresh }
 })

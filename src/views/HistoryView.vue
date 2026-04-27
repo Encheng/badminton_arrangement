@@ -40,18 +40,26 @@
           v-for="session in pastSessions"
           :key="session.session_id"
           :session="session"
+          :video-count="(store.videosByDate[session.date] || []).length"
+          @view-videos="openVideoModal(session)"
         />
       </ol>
+        <VideoListModal
+          v-model:show="videoModalOpen"
+          :session-date="selectedSessionDate"
+          :videos="selectedSessionVideos"
+        />
     </motion.main>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { motion } from 'motion-v'
 import { useAppStore } from '../stores/app.js'
 import HistoryCard from '../components/HistoryCard.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
+import VideoListModal from '../components/VideoListModal.vue'
 
 const store = useAppStore()
 
@@ -67,6 +75,17 @@ const avgAttendance = computed(() => {
   const total = pastSessions.value.reduce((sum, s) => sum + s.attendances.length, 0)
   return (total / pastSessions.value.length).toFixed(1)
 })
+
+const videoModalOpen = ref(false)
+const selectedVideoSession = ref(null)
+function openVideoModal(session) {
+  selectedVideoSession.value = session
+  videoModalOpen.value = true
+}
+const selectedSessionDate = computed(() => selectedVideoSession.value?.date || '')
+const selectedSessionVideos = computed(() =>
+  selectedVideoSession.value ? store.videosByDate[selectedVideoSession.value.date] || [] : []
+)
 </script>
 
 <style scoped>
