@@ -27,6 +27,7 @@ export const api = {
   getConfig:    ()                              => gasGet('getConfig'),
   getMembers:   ()                              => gasGet('getMembers'),
   getSessions:  ()                              => gasGet('getSessions'),
+  getVideos:    ()                              => gasGet('getVideos'),
   saveSession:   (token, date, attendances)      => gasPost('saveSession',   { admin_token: token, date, attendances }),
   deleteSession: (token, session_id)             => gasPost('deleteSession', { admin_token: token, session_id }),
   saveMember:   (token, member)                 => gasPost('saveMember',   { admin_token: token, ...member }),
