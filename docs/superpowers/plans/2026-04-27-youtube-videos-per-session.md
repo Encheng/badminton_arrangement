@@ -1,51 +1,51 @@
-# YouTube Videos Per Session — Implementation Plan
+# YouTube 影片連結到場次 — 實作計畫
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a "videos" button to past-session cards that opens a modal listing the YouTube recordings for that day, sourced via the channel RSS feed.
+**目標：** 在歷史場次卡片上加入「影片」按鈕，點擊後彈出 modal 列出該日的 YouTube 錄影，點擊影片開新分頁到 YouTube。
 
-**Architecture:** GAS backend reads YouTube channel RSS, parses video titles to extract `session_date` and `match_no`, upserts into a new `videos` sheet. Frontend fetches the videos list alongside sessions on init/refresh and indexes it by date. Cards display a count button; clicking opens a modal which links each row to YouTube.
+**架構：** GAS 後端讀取 YouTube 頻道 RSS，從影片標題解析 `session_date` 與 `match_no`，upsert 進新增的 `videos` sheet。前端在 init / refresh 時與 sessions 平行抓取影片清單，依日期建立索引。卡片顯示影片數量按鈕，點擊開啟 modal，每列點擊跳轉至 YouTube。
 
-**Tech Stack:** Google Apps Script (XmlService, UrlFetchApp), Vue 3 + Pinia, Vitest, lucide-vue-next, motion-v.
+**技術堆疊：** Google Apps Script (XmlService, UrlFetchApp), Vue 3 + Pinia, Vitest, lucide-vue-next, motion-v.
 
-**Spec:** [docs/superpowers/specs/2026-04-27-youtube-videos-per-session-design.md](../specs/2026-04-27-youtube-videos-per-session-design.md)
-
----
-
-## File Structure
-
-**Files to create:**
-- `src/components/VideoListModal.vue` — bottom-sheet modal listing videos for a session
-
-**Files to modify:**
-- `gas/Code.gs` — add `_fetchYouTubeRss`, `_syncVideos`, `_createVideosSheet`, `_getVideos`, wire `getVideos` action
-- `src/services/api.js` — add `getVideos` method
-- `src/services/__tests__/api.test.js` — add test for `getVideos`
-- `src/stores/app.js` — add `videos` ref, `videosByDate` computed, fetch in `_fetchAll`
-- `src/stores/__tests__/app.test.js` — extend mock + add tests for `videosByDate`
-- `src/components/HistoryCard.vue` — add `videoCount` prop, video button, `view-videos` emit
-- `src/components/SessionCard.vue` — same as HistoryCard, gated to past sessions
-- `src/views/HistoryView.vue` — wire modal state, pass `video-count`
-- `src/views/SessionsView.vue` — wire modal state, pass `video-count`
-
-**Manual changes (non-code):**
-- Google Sheet `config` tab: add row `youtube_channel_id | UCR6UdT-GtpcdHWfTCUbfxHg`
-- GAS deployment: redeploy after `Code.gs` changes (existing deploy procedure)
+**規格文件：** [docs/superpowers/specs/2026-04-27-youtube-videos-per-session-design.md](../specs/2026-04-27-youtube-videos-per-session-design.md)
 
 ---
 
-## Phase 1 — GAS Backend
+## 檔案結構
 
-GAS code is not covered by the existing JS test suite. Verification is via deployment + curl/browser hit on the deployed endpoint.
+**新增檔案：**
+- `src/components/VideoListModal.vue` — bottom-sheet 樣式的 modal，列出該場影片清單
 
-### Task 1: Add RSS sync helpers and `getVideos` action to `Code.gs`
+**修改檔案：**
+- `gas/Code.gs` — 新增 `_fetchYouTubeRss`, `_syncVideos`, `_createVideosSheet`, `_getVideos`，並接到 `getVideos` action
+- `src/services/api.js` — 新增 `getVideos` 方法
+- `src/services/__tests__/api.test.js` — 新增 `getVideos` 的測試
+- `src/stores/app.js` — 新增 `videos` ref、`videosByDate` computed、`_fetchAll` 平行抓取
+- `src/stores/__tests__/app.test.js` — 擴充 mock + 新增 `videosByDate` 測試
+- `src/components/HistoryCard.vue` — 新增 `videoCount` prop、影片按鈕、`view-videos` emit
+- `src/components/SessionCard.vue` — 同 HistoryCard，但僅在過去場次顯示
+- `src/views/HistoryView.vue` — 串接 modal state，傳入 `video-count`
+- `src/views/SessionsView.vue` — 串接 modal state，傳入 `video-count`
 
-**Files:**
-- Modify: `gas/Code.gs`
+**手動變更（非程式碼）：**
+- Google Sheet `config` 分頁：新增一列 `youtube_channel_id | UCR6UdT-GtpcdHWfTCUbfxHg`
+- GAS 部署：`Code.gs` 改完後依現行流程重新部署
 
-- [ ] **Step 1: Add `getVideos` action to `doGet`**
+---
 
-In `gas/Code.gs`, find the `doGet` function (lines 7–20). Add `getVideos` to the action dispatch:
+## 第 1 階段 — GAS 後端
+
+GAS 程式碼不在現有 JS 測試套件範圍內，驗證方式為部署後用 curl / 瀏覽器打 endpoint。
+
+### Task 1：在 `Code.gs` 新增 RSS 同步輔助函式與 `getVideos` action
+
+**檔案：**
+- 修改：`gas/Code.gs`
+
+- [ ] **步驟 1：在 `doGet` 加入 `getVideos` action**
+
+在 `gas/Code.gs` 找到 `doGet` 函式（第 7–20 行），在 action dispatch 加入 `getVideos`：
 
 ```js
 function doGet(e) {
@@ -65,9 +65,9 @@ function doGet(e) {
 }
 ```
 
-- [ ] **Step 2: Add `_fetchYouTubeRss` helper**
+- [ ] **步驟 2：新增 `_fetchYouTubeRss` 輔助函式**
 
-Append at the end of `gas/Code.gs`:
+在 `gas/Code.gs` 結尾追加：
 
 ```js
 function _fetchYouTubeRss(channelId) {
@@ -91,9 +91,9 @@ function _fetchYouTubeRss(channelId) {
 }
 ```
 
-- [ ] **Step 3: Add `_createVideosSheet` helper**
+- [ ] **步驟 3：新增 `_createVideosSheet` 輔助函式**
 
-Append at the end of `gas/Code.gs`:
+在 `gas/Code.gs` 結尾追加：
 
 ```js
 function _createVideosSheet(ss) {
@@ -103,9 +103,9 @@ function _createVideosSheet(ss) {
 }
 ```
 
-- [ ] **Step 4: Add `_syncVideos` helper**
+- [ ] **步驟 4：新增 `_syncVideos` 輔助函式**
 
-Append at the end of `gas/Code.gs`:
+在 `gas/Code.gs` 結尾追加：
 
 ```js
 function _syncVideos(ss) {
@@ -139,9 +139,9 @@ function _syncVideos(ss) {
 }
 ```
 
-- [ ] **Step 5: Add `_getVideos` helper**
+- [ ] **步驟 5：新增 `_getVideos` 輔助函式**
 
-Append at the end of `gas/Code.gs`:
+在 `gas/Code.gs` 結尾追加：
 
 ```js
 function _getVideos(ss) {
@@ -170,7 +170,7 @@ function _getVideos(ss) {
 }
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **步驟 6：Commit**
 
 ```bash
 git add gas/Code.gs
@@ -179,53 +179,53 @@ git commit -m "feat(gas): add YouTube RSS sync and getVideos endpoint"
 
 ---
 
-### Task 2: Manual — configure sheet and deploy GAS
+### Task 2：手動 — 設定 sheet 並部署 GAS
 
-**Files:** none (manual steps in Google Sheet UI + GAS editor)
+**檔案：** 無（在 Google Sheet UI 與 GAS 編輯器手動操作）
 
-- [ ] **Step 1: Add config row in Google Sheet**
+- [ ] **步驟 1：在 Google Sheet 加入 config**
 
-Open the linked Google Spreadsheet → `config` tab → append a new row:
+開啟連動的 Google Spreadsheet → `config` 分頁 → 新增一列：
 
-| col A | col B |
-|-------|-------|
+| 欄 A | 欄 B |
+|------|------|
 | `youtube_channel_id` | `UCR6UdT-GtpcdHWfTCUbfxHg` |
 
-- [ ] **Step 2: Deploy updated GAS**
+- [ ] **步驟 2：部署更新後的 GAS**
 
-In the GAS editor (script bound to the spreadsheet):
-1. Replace `Code.gs` content with the worktree's `gas/Code.gs`
-2. Click `部署` → `管理部署` → existing deployment → edit (pencil icon) → `版本` → `新版本` → `部署`
-3. Note the new deployment URL (should match `VITE_GAS_URL`; if URL changed, copy the new one)
+在 GAS 編輯器（綁定該試算表的 script）：
+1. 將 `Code.gs` 內容換成 worktree 內的 `gas/Code.gs`
+2. 點 `部署` → `管理部署` → 既有部署 → 編輯（鉛筆圖示）→ `版本` → `新版本` → `部署`
+3. 記下新部署 URL（應該與 `VITE_GAS_URL` 相同；若改變，複製新 URL）
 
-- [ ] **Step 3: Smoke test the endpoint**
+- [ ] **步驟 3：對 endpoint 做 smoke test**
 
-In a browser, hit:
+在瀏覽器打：
 ```
 <VITE_GAS_URL>?action=getVideos
 ```
 
-Expected: JSON with `status: "ok"` and `data: [...]` array of 15-ish video entries. The `videos` sheet should now exist with rows. If `data` is `[]` and the sheet is empty, double-check `youtube_channel_id` matches `UCR6UdT-GtpcdHWfTCUbfxHg` exactly.
+預期：JSON 回應 `status: "ok"` 且 `data: [...]` 含約 15 筆影片。`videos` 分頁應該已自動建立並寫入資料。如果 `data` 是 `[]` 且 sheet 為空，請再次確認 `youtube_channel_id` 是否與 `UCR6UdT-GtpcdHWfTCUbfxHg` 完全相符。
 
-- [ ] **Step 4: Verify entries shape**
+- [ ] **步驟 4：確認資料格式**
 
-Check one entry has fields: `video_id` (string, 11 chars), `session_date` (`YYYY-MM-DD`), `match_no` (number), `title` (string), `published_at` (ISO string).
+檢查單筆 entry 包含欄位：`video_id`（11 碼字串）、`session_date`（`YYYY-MM-DD`）、`match_no`（數字）、`title`（字串）、`published_at`（ISO 字串）。
 
-No commit (manual step only).
+無 commit（純手動步驟）。
 
 ---
 
-## Phase 2 — Frontend API & Store
+## 第 2 階段 — 前端 API 與 Store
 
-### Task 3: Add `api.getVideos` method with test (TDD)
+### Task 3：新增 `api.getVideos` 方法與測試（TDD）
 
-**Files:**
-- Modify: `src/services/api.js`
-- Modify: `src/services/__tests__/api.test.js`
+**檔案：**
+- 修改：`src/services/api.js`
+- 修改：`src/services/__tests__/api.test.js`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **步驟 1：寫一個會失敗的測試**
 
-Append at the end of `src/services/__tests__/api.test.js` (before the final newline):
+在 `src/services/__tests__/api.test.js` 結尾追加：
 
 ```js
 describe('api.getVideos', () => {
@@ -246,17 +246,17 @@ describe('api.getVideos', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to confirm failure**
+- [ ] **步驟 2：執行測試確認失敗**
 
 ```bash
 npx vitest run src/services/__tests__/api.test.js
 ```
 
-Expected: `api.getVideos is not a function` or similar.
+預期：`api.getVideos is not a function` 或類似錯誤。
 
-- [ ] **Step 3: Add `getVideos` to `src/services/api.js`**
+- [ ] **步驟 3：在 `src/services/api.js` 加入 `getVideos`**
 
-Add a line in the `api` object (after `getSessions:`):
+在 `api` 物件內加一行（`getSessions:` 之後）：
 
 ```js
 export const api = {
@@ -272,15 +272,15 @@ export const api = {
 }
 ```
 
-- [ ] **Step 4: Run tests to confirm pass**
+- [ ] **步驟 4：執行測試確認通過**
 
 ```bash
 npx vitest run src/services/__tests__/api.test.js
 ```
 
-Expected: all tests pass, including the new `api.getVideos` block.
+預期：所有測試通過，包含新的 `api.getVideos`。
 
-- [ ] **Step 5: Commit**
+- [ ] **步驟 5：Commit**
 
 ```bash
 git add src/services/api.js src/services/__tests__/api.test.js
@@ -289,15 +289,15 @@ git commit -m "feat(api): add getVideos endpoint client"
 
 ---
 
-### Task 4: Add `videos` state, `videosByDate` computed, fetch wiring (TDD)
+### Task 4：新增 `videos` state、`videosByDate` computed、fetch 串接（TDD）
 
-**Files:**
-- Modify: `src/stores/app.js`
-- Modify: `src/stores/__tests__/app.test.js`
+**檔案：**
+- 修改：`src/stores/app.js`
+- 修改：`src/stores/__tests__/app.test.js`
 
-- [ ] **Step 1: Update existing mock to include `getVideos`**
+- [ ] **步驟 1：擴充既有 mock 加入 `getVideos`**
 
-In `src/stores/__tests__/app.test.js`, modify the `vi.mock` call (lines 6–19) to add `getVideos`:
+在 `src/stores/__tests__/app.test.js` 修改 `vi.mock` 區塊（第 6–19 行），加入 `getVideos`：
 
 ```js
 vi.mock('../../services/api.js', () => ({
@@ -321,9 +321,9 @@ vi.mock('../../services/api.js', () => ({
 }))
 ```
 
-- [ ] **Step 2: Add failing tests for videos state and `videosByDate`**
+- [ ] **步驟 2：寫會失敗的 videos 與 `videosByDate` 測試**
 
-Append inside the `describe('useAppStore', ...)` block in `src/stores/__tests__/app.test.js`:
+在 `describe('useAppStore', ...)` 區塊內追加：
 
 ```js
   it('loads videos on init', async () => {
@@ -349,17 +349,17 @@ Append inside the `describe('useAppStore', ...)` block in `src/stores/__tests__/
   })
 ```
 
-- [ ] **Step 3: Run tests to confirm failure**
+- [ ] **步驟 3：執行測試確認失敗**
 
 ```bash
 npx vitest run src/stores/__tests__/app.test.js
 ```
 
-Expected: 3 new tests fail with `store.videos is undefined` or similar.
+預期：3 個新測試失敗（`store.videos is undefined` 之類）。
 
-- [ ] **Step 4: Add `videos` state and `videosByDate` computed**
+- [ ] **步驟 4：新增 `videos` state 與 `videosByDate` computed**
 
-In `src/stores/app.js`, modify lines 6–10 to add the videos ref:
+在 `src/stores/app.js` 將第 6–10 行修改，加入 videos ref：
 
 ```js
 export const useAppStore = defineStore('app', () => {
@@ -371,7 +371,7 @@ export const useAppStore = defineStore('app', () => {
   const _token   = ref(localStorage.getItem('admin_token') || null)
 ```
 
-After `allUniqueGuests` computed (around line 33), add:
+在 `allUniqueGuests` computed 之後（約第 33 行附近）追加：
 
 ```js
   const videosByDate = computed(() => {
@@ -383,9 +383,9 @@ After `allUniqueGuests` computed (around line 33), add:
   })
 ```
 
-- [ ] **Step 5: Wire video fetch into `_fetchAll`**
+- [ ] **步驟 5：將 video fetch 串入 `_fetchAll`**
 
-In `src/stores/app.js`, replace the `_fetchAll` function (lines 70–82) with:
+在 `src/stores/app.js` 將 `_fetchAll`（第 70–82 行）整段替換為：
 
 ```js
   async function _fetchAll() {
@@ -408,32 +408,32 @@ In `src/stores/app.js`, replace the `_fetchAll` function (lines 70–82) with:
   }
 ```
 
-- [ ] **Step 6: Export new fields from store**
+- [ ] **步驟 6：在 store return 加上新欄位**
 
-Modify the return statement (line 98) to include `videos` and `videosByDate`:
+修改 return 那行（第 98 行）加上 `videos` 與 `videosByDate`：
 
 ```js
   return { config, members, sessions, videos, loading, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, setAdminToken, clearAdminToken, init, refresh }
 })
 ```
 
-- [ ] **Step 7: Run tests to confirm pass**
+- [ ] **步驟 7：執行測試確認通過**
 
 ```bash
 npx vitest run src/stores/__tests__/app.test.js
 ```
 
-Expected: all tests pass (including 3 new ones).
+預期：全部通過（包含 3 個新測試）。
 
-- [ ] **Step 8: Run full test suite**
+- [ ] **步驟 8：執行完整測試套件**
 
 ```bash
 npx vitest run
 ```
 
-Expected: all tests pass.
+預期：全部通過。
 
-- [ ] **Step 9: Commit**
+- [ ] **步驟 9：Commit**
 
 ```bash
 git add src/stores/app.js src/stores/__tests__/app.test.js
@@ -442,16 +442,16 @@ git commit -m "feat(store): load videos and expose videosByDate index"
 
 ---
 
-## Phase 3 — Modal Component
+## 第 3 階段 — Modal 元件
 
-### Task 5: Create `VideoListModal.vue`
+### Task 5：建立 `VideoListModal.vue`
 
-**Files:**
-- Create: `src/components/VideoListModal.vue`
+**檔案：**
+- 新增：`src/components/VideoListModal.vue`
 
-- [ ] **Step 1: Create the file with full content**
+- [ ] **步驟 1：建立檔案，內容如下**
 
-Create `src/components/VideoListModal.vue`:
+新增 `src/components/VideoListModal.vue`：
 
 ```vue
 <!-- src/components/VideoListModal.vue -->
@@ -645,17 +645,15 @@ function onThumbError(e) {
 </style>
 ```
 
-- [ ] **Step 2: Verify the file imports cleanly via dev build**
+- [ ] **步驟 2：用 dev build 確認檔案語法可用**
 
 ```bash
 npm run dev
 ```
 
-Open the app in a browser. The console should have no errors related to `VideoListModal`. (Component is not yet used by any view — this just confirms the syntax is valid.)
+打開 app 看 console 沒有跟 `VideoListModal` 相關的錯誤即可（這個元件還沒被任何 view 使用，只是確認語法 OK）。停掉 dev server。
 
-Stop the dev server.
-
-- [ ] **Step 3: Commit**
+- [ ] **步驟 3：Commit**
 
 ```bash
 git add src/components/VideoListModal.vue
@@ -664,16 +662,16 @@ git commit -m "feat: add VideoListModal component"
 
 ---
 
-## Phase 4 — Card Integration
+## 第 4 階段 — 卡片整合
 
-### Task 6: Add video button to `HistoryCard.vue`
+### Task 6：在 `HistoryCard.vue` 加上影片按鈕
 
-**Files:**
-- Modify: `src/components/HistoryCard.vue`
+**檔案：**
+- 修改：`src/components/HistoryCard.vue`
 
-- [ ] **Step 1: Add prop, emit, and template button**
+- [ ] **步驟 1：加入 prop、emit 與 template 按鈕**
 
-Replace the entire `src/components/HistoryCard.vue` with:
+將整份 `src/components/HistoryCard.vue` 替換為：
 
 ```vue
 <!-- src/components/HistoryCard.vue -->
@@ -777,7 +775,7 @@ const nameList = computed(() =>
 </style>
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **步驟 2：Commit**
 
 ```bash
 git add src/components/HistoryCard.vue
@@ -786,16 +784,16 @@ git commit -m "feat: HistoryCard shows video count button"
 
 ---
 
-### Task 7: Add video button to `SessionCard.vue` (past sessions only)
+### Task 7：在 `SessionCard.vue` 加上影片按鈕（僅過去場次）
 
-**Files:**
-- Modify: `src/components/SessionCard.vue`
+**檔案：**
+- 修改：`src/components/SessionCard.vue`
 
-- [ ] **Step 1: Add prop and emit, modify template**
+- [ ] **步驟 1：加入 prop、emit、修改 template**
 
-In `src/components/SessionCard.vue`:
+在 `src/components/SessionCard.vue`：
 
-(a) Modify the `card__footer` block in the template (lines 19–37) to add the video button **before** `card__actions`:
+(a) 修改 template 中 `card__footer` 區塊（第 19–37 行），在 `card__actions` **之前**插入影片按鈕：
 
 ```vue
     <div class="card__footer">
@@ -836,7 +834,7 @@ In `src/components/SessionCard.vue`:
     </div>
 ```
 
-(b) Modify the `<script setup>` block (lines 53–62) to add the prop, emit, and import:
+(b) 修改 `<script setup>` 區塊（第 53–62 行），加入 prop、emit、import：
 
 ```js
 import { computed } from 'vue'
@@ -854,7 +852,7 @@ const props = defineProps({
 defineEmits(['edit', 'delete', 'copy', 'view-videos'])
 ```
 
-(c) Append to the `<style scoped>` block (just before `</style>` at line 212):
+(c) 在 `<style scoped>` 區塊結尾（第 212 行 `</style>` 之前）追加：
 
 ```css
 .card__videos-btn {
@@ -882,7 +880,7 @@ defineEmits(['edit', 'delete', 'copy', 'view-videos'])
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **步驟 2：Commit**
 
 ```bash
 git add src/components/SessionCard.vue
@@ -891,18 +889,16 @@ git commit -m "feat: SessionCard shows video count for past sessions"
 
 ---
 
-## Phase 5 — View Wiring
+## 第 5 階段 — View 串接
 
-### Task 8: Wire `HistoryView.vue`
+### Task 8：串接 `HistoryView.vue`
 
-**Files:**
-- Modify: `src/views/HistoryView.vue`
+**檔案：**
+- 修改：`src/views/HistoryView.vue`
 
-- [ ] **Step 1: Add modal import, state, and pass `video-count`**
+- [ ] **步驟 1：傳入 `video-count`、加入 modal**
 
-Replace `src/views/HistoryView.vue` template's `<HistoryCard>` block AND add modal at the end of `<motion.main>`:
-
-In the existing template, change the `HistoryCard` element (around line 41) from:
+在既有 template，將 `HistoryCard` 元素（約第 41 行附近）從：
 
 ```vue
         <HistoryCard
@@ -912,7 +908,7 @@ In the existing template, change the `HistoryCard` element (around line 41) from
         />
 ```
 
-to:
+改為：
 
 ```vue
         <HistoryCard
@@ -924,7 +920,7 @@ to:
         />
 ```
 
-Right before the closing `</motion.main>` tag, add:
+在 `</motion.main>` 結束標籤之前追加：
 
 ```vue
         <VideoListModal
@@ -934,9 +930,9 @@ Right before the closing `</motion.main>` tag, add:
         />
 ```
 
-- [ ] **Step 2: Add modal state in script**
+- [ ] **步驟 2：在 script 加入 modal state**
 
-In the `<script setup>` block, replace the imports and add modal state. Find the existing imports (around lines 51–55):
+在 `<script setup>` 找到既有 import（約第 51–55 行）：
 
 ```js
 import { computed } from 'vue'
@@ -946,7 +942,7 @@ import HistoryCard from '../components/HistoryCard.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
 ```
 
-Replace with:
+替換為：
 
 ```js
 import { computed, ref } from 'vue'
@@ -957,7 +953,7 @@ import SkeletonBlock from '../components/SkeletonBlock.vue'
 import VideoListModal from '../components/VideoListModal.vue'
 ```
 
-After the existing computeds (after `avgAttendance`, around line 70), append:
+在 `avgAttendance` computed 之後（約第 70 行附近）追加：
 
 ```js
 const videoModalOpen = ref(false)
@@ -972,7 +968,7 @@ const selectedSessionVideos = computed(() =>
 )
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **步驟 3：Commit**
 
 ```bash
 git add src/views/HistoryView.vue
@@ -981,14 +977,14 @@ git commit -m "feat(history): wire video list modal"
 
 ---
 
-### Task 9: Wire `SessionsView.vue`
+### Task 9：串接 `SessionsView.vue`
 
-**Files:**
-- Modify: `src/views/SessionsView.vue`
+**檔案：**
+- 修改：`src/views/SessionsView.vue`
 
-- [ ] **Step 1: Pass `video-count` to past `<SessionCard>` instances**
+- [ ] **步驟 1：在「歷史記錄」section 的 `<SessionCard>` 加上 `video-count`**
 
-In `src/views/SessionsView.vue`, locate the `SessionCard` rendering for past sessions inside the "歷史記錄" section. The card render in the future section should remain unchanged. Find the past-sessions iteration (search for `pastSessions` or `filteredPastSessions`) and add `video-count` + `@view-videos`:
+在 `src/views/SessionsView.vue`，找到「歷史記錄」section 內 `SessionCard` 的渲染（搜尋 `pastSessions` 或 `filteredPastSessions`），加入 `video-count` 與 `@view-videos`。「即將到來」section 的 `SessionCard` 不要改：
 
 ```vue
         <SessionCard
@@ -1004,11 +1000,9 @@ In `src/views/SessionsView.vue`, locate the `SessionCard` rendering for past ses
         />
 ```
 
-(Keep the future-session SessionCard usage unchanged — no `video-count` needed there.)
+- [ ] **步驟 2：在 template 結尾加入 VideoListModal**
 
-- [ ] **Step 2: Add VideoListModal at end of template**
-
-`VideoListModal` already uses `Teleport to="body"` internally, so it can be placed as a normal sibling. Add this just before the closing `</template>` tag, after the existing add/edit modal `<Teleport>` blocks:
+`VideoListModal` 內部已用 `Teleport to="body"`，所以可以當一般 sibling 放置。在既有的「新增場次」「編輯場次」`<Teleport>` 之後、`</template>` 結束標籤之前追加：
 
 ```vue
       <VideoListModal
@@ -1018,15 +1012,15 @@ In `src/views/SessionsView.vue`, locate the `SessionCard` rendering for past ses
       />
 ```
 
-- [ ] **Step 3: Add imports and state in script**
+- [ ] **步驟 3：在 script 加入 import 與 state**
 
-In the `<script setup>` block, add to the imports:
+在 `<script setup>` 加入 import：
 
 ```js
 import VideoListModal from '../components/VideoListModal.vue'
 ```
 
-After the existing refs/state (find a logical spot near other modal state like `showAddModal`), add:
+在既有 ref / state 區（建議放在 `showAddModal` 之類的 modal state 附近）追加：
 
 ```js
 const videoModalOpen = ref(false)
@@ -1041,9 +1035,9 @@ const selectedSessionVideos = computed(() =>
 )
 ```
 
-(Naming `selectedVideoSession` instead of `selectedSession` to avoid collision if the file already has a `selectedSession` ref for another modal.)
+（用 `selectedVideoSession` 而非 `selectedSession`，避免跟其他 modal 既有的 ref 撞名。）
 
-- [ ] **Step 4: Commit**
+- [ ] **步驟 4：Commit**
 
 ```bash
 git add src/views/SessionsView.vue
@@ -1052,72 +1046,72 @@ git commit -m "feat(sessions): wire video list modal for past sessions"
 
 ---
 
-## Phase 6 — End-to-End Verification
+## 第 6 階段 — 端對端驗證
 
-### Task 10: Manual smoke test
+### Task 10：手動 smoke test
 
-**Files:** none (manual browser verification)
+**檔案：** 無（瀏覽器手動驗證）
 
-- [ ] **Step 1: Run dev server**
+- [ ] **步驟 1：跑 dev server**
 
 ```bash
 npm run dev
 ```
 
-- [ ] **Step 2: Verify HistoryView**
+- [ ] **步驟 2：驗證 HistoryView**
 
-Navigate to the History tab. Expected:
-- Past sessions with matching videos show a `📹 N 支影片` button (using Video icon)
-- Past sessions without videos show NO button
-- Tap the button → modal slides up from bottom
-- Modal lists videos sorted by `第 1 局 → 第 N 局`
-- Each item shows thumbnail + match number + player names
-- Tapping an item opens YouTube in a new tab
-- Tapping the X or backdrop closes the modal
+切到歷史記錄分頁。預期：
+- 有對應影片的歷史場次顯示「📹 N 支影片」按鈕（用 Video icon）
+- 沒有影片的場次完全不顯示按鈕
+- 點按鈕 → modal 從底部滑上來
+- Modal 內影片依「第 1 局 → 第 N 局」排序
+- 每筆顯示縮圖、局號、球員名單
+- 點任一筆 → 開新分頁到 YouTube
+- 點 X 或 backdrop → modal 關閉
 
-- [ ] **Step 3: Verify SessionsView**
+- [ ] **步驟 3：驗證 SessionsView**
 
-Navigate to the Sessions tab.
-- "即將到來" section: NO video button on any card (correct — future sessions have no videos)
-- "歷史記錄" section: video button appears on cards with matching videos
-- Same modal behavior as HistoryView
+切到場次分頁。
+- 「即將到來」section：所有卡片**不**顯示影片按鈕（正確：未來場次沒影片）
+- 「歷史記錄」section：有對應影片的卡片才顯示按鈕
+- Modal 行為與 HistoryView 一致
 
-- [ ] **Step 4: Verify WeekView is unaffected**
+- [ ] **步驟 4：驗證 WeekView 沒被影響**
 
-Navigate to the Week tab. No video UI should appear (correct).
+切到本週分頁。完全沒有影片相關 UI（正確）。
 
-- [ ] **Step 5: Verify pull-to-refresh**
+- [ ] **步驟 5：驗證 pull-to-refresh**
 
-In SessionsView, pull down. Expected: skeleton/refresh runs and videos remain (or get updated if new ones synced).
+在 SessionsView 下拉。預期：skeleton/refresh 正常跑，影片資料保留（或同步到新內容）。
 
-- [ ] **Step 6: Verify resilience**
+- [ ] **步驟 6：驗證容錯**
 
-In DevTools Network tab, throttle to "Offline", then refresh app. Expected: app still loads (sessions show), video buttons disappear, console has `Videos fetch failed: ...` log. No error blocks the UI.
+DevTools Network 切「Offline」後重新整理。預期：app 仍能載入（sessions 顯示），影片按鈕全部消失，console 出現 `Videos fetch failed: ...` log。沒有 error 阻擋畫面。
 
-- [ ] **Step 7: Run full test suite one more time**
+- [ ] **步驟 7：最後跑一次完整測試套件**
 
 ```bash
 npx vitest run
 ```
 
-Expected: all tests pass.
+預期：全部通過。
 
-- [ ] **Step 8: Build check**
+- [ ] **步驟 8：Build 檢查**
 
 ```bash
 npm run build
 ```
 
-Expected: build completes without errors.
+預期：build 完成沒有 error。
 
-No commit (manual verification only).
+無 commit（純手動驗證）。
 
 ---
 
-## Done
+## 完成
 
-All tasks complete. The feature is shipped end-to-end:
-- GAS deployed with new endpoint
-- Sheet has `youtube_channel_id` config and auto-created `videos` tab
-- Frontend fetches and displays videos on past sessions
-- Manual sheet edits possible for backfilling old data
+全部 task 跑完後，功能即上線：
+- GAS 新 endpoint 已部署
+- Sheet 有 `youtube_channel_id` 設定，`videos` 分頁自動建立
+- 前端在歷史場次顯示影片按鈕、modal 列出可點擊清單
+- Sheet 仍可手動補登舊資料（不會被 sync 蓋掉）
