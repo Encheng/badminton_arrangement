@@ -21,6 +21,14 @@
       <span class="card__count">
         {{ session.attendances.length }} 人{{ isFuture ? '預定' : '出席' }}
       </span>
+      <button
+        v-if="!isFuture && !isCurrent && videoCount > 0"
+        class="card__videos-btn"
+        @click.stop="$emit('view-videos')"
+      >
+        <Video :size="14" :stroke-width="2" />
+        {{ videoCount }} 支影片
+      </button>
       <div v-if="editable" class="card__actions">
         <button
           class="card__copy-btn"
@@ -51,15 +59,17 @@
 <script setup>
 import { computed } from 'vue'
 import { motion } from 'motion-v'
+import { Video } from 'lucide-vue-next'
 
 const props = defineProps({
-  session:   { type: Object, required: true },
-  isFuture:  { type: Boolean, default: false },
-  isCurrent: { type: Boolean, default: false },
-  editable:  { type: Boolean, default: false },
+  session:    { type: Object,  required: true },
+  isFuture:   { type: Boolean, default: false },
+  isCurrent:  { type: Boolean, default: false },
+  editable:   { type: Boolean, default: false },
+  videoCount: { type: Number,  default: 0 },
 })
 
-defineEmits(['edit', 'delete', 'copy'])
+defineEmits(['edit', 'delete', 'copy', 'view-videos'])
 
 const formattedDate = computed(() => {
   const d = new Date(props.session.date + 'T00:00:00')
@@ -207,6 +217,29 @@ const nameList = computed(() =>
   .card__delete-btn:hover {
     background: var(--error, #cf6679);
     color: #fff;
+  }
+}
+.card__videos-btn {
+  background: none;
+  border: 1.5px solid var(--primary);
+  color: var(--primary);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex; align-items: center; gap: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.card__videos-btn:active {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+@media (hover: hover) {
+  .card__videos-btn:hover {
+    background: var(--primary);
+    color: var(--on-primary);
   }
 }
 </style>
