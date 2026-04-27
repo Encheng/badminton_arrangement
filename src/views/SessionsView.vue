@@ -126,9 +126,11 @@
               :key="session.session_id"
               :session="session"
               :editable="store.isAdmin"
+              :video-count="(store.videosByDate[session.date] || []).length"
               @edit="editSession"
               @delete="confirmDeleteSession"
               @copy="copySession"
+              @view-videos="openVideoModal(session)"
             />
           </ol>
 
@@ -350,6 +352,12 @@
         </motion.div>
         </AnimatePresence>
       </Teleport>
+
+      <VideoListModal
+        v-model:show="videoModalOpen"
+        :session-date="selectedSessionDate"
+        :videos="selectedSessionVideos"
+      />
   </div>
   </PullRefresh>
 </template>
@@ -368,6 +376,7 @@ import SkeletonBlock from '../components/SkeletonBlock.vue'
 import MemberCheckItem from '../components/MemberCheckItem.vue'
 import GuestAutocomplete from '../components/GuestAutocomplete.vue'
 import PullRefresh from '../components/PullRefresh.vue'
+import VideoListModal from '../components/VideoListModal.vue'
 
 const store = useAppStore()
 const route = useRoute()
@@ -649,6 +658,18 @@ function copySession(session) {
   addError.value = ''
   showAddModal.value = true
 }
+
+// --- 影片清單 modal ---
+const videoModalOpen = ref(false)
+const selectedVideoSession = ref(null)
+function openVideoModal(session) {
+  selectedVideoSession.value = session
+  videoModalOpen.value = true
+}
+const selectedSessionDate = computed(() => selectedVideoSession.value?.date || '')
+const selectedSessionVideos = computed(() =>
+  selectedVideoSession.value ? store.videosByDate[selectedVideoSession.value.date] || [] : []
+)
 
 // --- 新增場次 modal ---
 const showAddModal = ref(false)
