@@ -37,26 +37,29 @@
               v-for="v in videos"
               :key="v.video_id"
               class="video-item"
-              role="link"
-              tabindex="0"
-              @click="openVideo(v.video_id)"
-              @keydown.enter="openVideo(v.video_id)"
             >
-              <div class="video-item__thumb">
-                <img
-                  :src="`https://i.ytimg.com/vi/${v.video_id}/mqdefault.jpg`"
-                  :alt="`第 ${v.match_no} 局縮圖`"
-                  loading="lazy"
-                  @error="onThumbError"
-                >
-                <div class="video-item__thumb-fallback" aria-hidden="true">
-                  <Play :size="20" :stroke-width="2" />
+              <a
+                :href="`https://www.youtube.com/watch?v=${v.video_id}`"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="video-item__link"
+              >
+                <div class="video-item__thumb">
+                  <img
+                    :src="`https://i.ytimg.com/vi/${v.video_id}/mqdefault.jpg`"
+                    :alt="`第 ${v.match_no} 局縮圖`"
+                    loading="lazy"
+                    @error="onThumbError"
+                  >
+                  <div class="video-item__thumb-fallback" aria-hidden="true">
+                    <Play :size="20" :stroke-width="2" />
+                  </div>
                 </div>
-              </div>
-              <div class="video-item__body">
-                <p class="video-item__match">第 {{ v.match_no }} 局</p>
-                <p class="video-item__names">{{ extractNames(v.title) }}</p>
-              </div>
+                <div class="video-item__body">
+                  <p class="video-item__match">第 {{ v.match_no }} 局</p>
+                  <p class="video-item__names">{{ extractNames(v.title) }}</p>
+                </div>
+              </a>
             </li>
           </ol>
         </motion.div>
@@ -88,10 +91,6 @@ const formattedDate = computed(() => {
 
 function extractNames(title) {
   return title.replace(/^\d{8}\s/, '').replace(/\s\d+$/, '')
-}
-
-function openVideo(videoId) {
-  window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank', 'noopener')
 }
 
 function onThumbError(e) {
@@ -139,16 +138,21 @@ function onThumbError(e) {
   display: flex; flex-direction: column; gap: 8px;
 }
 .video-item {
+  list-style: none;
+}
+.video-item__link {
   display: flex; gap: 12px;
   padding: 8px;
   border-radius: 8px;
   cursor: pointer;
   touch-action: manipulation;
   transition: background 0.15s ease;
+  text-decoration: none;
+  color: inherit;
 }
-.video-item:active { background: var(--surface-tinted, #f5f0ff); }
+.video-item__link:active { background: var(--surface-tinted, #f5f0ff); }
 @media (hover: hover) {
-  .video-item:hover { background: var(--surface-tinted, #f5f0ff); }
+  .video-item__link:hover { background: var(--surface-tinted, #f5f0ff); }
 }
 .video-item__thumb {
   position: relative;
