@@ -20,8 +20,15 @@
           :animate="{ y: 0 }"
           :exit="{ y: '100%' }"
           :transition="{ type: 'spring', stiffness: 300, damping: 30 }"
+          :style="{ transform: `translateY(${modalTranslateY}px)` }"
         >
-          <div class="modal__header">
+          <div
+            class="modal__header"
+            @touchstart="handleTouchStart"
+            @touchmove="handleTouchMove"
+            @touchend="handleTouchEnd"
+          >
+            <div class="modal__handle" aria-hidden="true"></div>
             <h2 class="modal__title">{{ formattedDate }} 的影片</h2>
             <button
               class="modal__close"
@@ -69,7 +76,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, watch, ref } from 'vue'
 import { motion, AnimatePresence } from 'motion-v'
 import { X, Play } from 'lucide-vue-next'
 
@@ -79,7 +86,57 @@ const props = defineProps({
   videos:      { type: Array,   default: () => [] },
 })
 
-defineEmits(['update:show'])
+const emit = defineEmits(['update:show'])
+
+// Scroll Lock: 阻止背景滾動
+watch(() => props.show, (isOpen) => {
+  if (isOpen) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+})
+
+// Swipe Down to Close
+const touchState = ref({
+  startY: 0,
+  currentY: 0,
+  isDragging: false,
+})
+const modalTranslateY = ref(0)
+
+function handleTouchStart(e) {
+  touchState.value.startY = e.touches[0].clientY
+  touchState.value.isDragging = true
+}
+
+function handleTouchMove(e) {
+  if (!touchState.value.isDragging) return
+
+  const currentY = e.touches[0].clientY
+  const deltaY = currentY - touchState.value.startY
+
+  // 只允許向下拖動
+  if (deltaY > 0) {
+    modalTranslateY.value = deltaY
+    // 防止過度拖動時影響內部滾動
+    e.preventDefault()
+  }
+}
+
+function handleTouchEnd() {
+  if (!touchState.value.isDragging) return
+
+  const threshold = 100 // 滑動超過 100px 就關閉
+
+  if (modalTranslateY.value > threshold) {
+    emit('update:show', false)
+  }
+
+  // 重置狀態
+  modalTranslateY.value = 0
+  touchState.value.isDragging = false
+}
 
 const formattedDate = computed(() => {
   if (!props.sessionDate) return ''
@@ -116,21 +173,43 @@ function onThumbError(e) {
   display: flex;
   flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  transition: transform 0.2s ease-out;
+}
+.modal:has(.modal__header:active) {
+  transition: none;
 }
 .modal__header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px 12px;
   border-bottom: 1px solid var(--border);
+  position: relative;
+  cursor: grab;
+  user-select: none;
+}
+.modal__header:active {
+  cursor: grabbing;
+}
+.modal__handle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
 }
 .modal__title {
   font-size: 16px; font-weight: 700; color: var(--text-primary);
   margin: 0;
+  padding-top: 8px;
 }
 .modal__close {
   background: none; border: none; padding: 4px;
   color: var(--text-tertiary); cursor: pointer;
   display: flex; align-items: center;
   touch-action: manipulation;
+  margin-top: 8px;
 }
 .video-list {
   list-style: none; margin: 0; padding: 8px 12px;
