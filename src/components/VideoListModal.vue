@@ -17,10 +17,12 @@
           role="dialog"
           aria-label="場次影片"
           :initial="{ y: '100%' }"
-          :animate="{ y: 0 }"
+          :animate="{ y: dragOffset }"
           :exit="{ y: '100%' }"
-          :transition="{ type: 'spring', stiffness: 300, damping: 30 }"
-          :style="{ transform: `translateY(${modalTranslateY}px)` }"
+          :transition="isDragging
+            ? { duration: 0 }
+            : { type: 'spring', stiffness: 300, damping: 30 }
+          "
         >
           <div
             class="modal__header"
@@ -98,44 +100,41 @@ watch(() => props.show, (isOpen) => {
 })
 
 // Swipe Down to Close
-const touchState = ref({
-  startY: 0,
-  currentY: 0,
-  isDragging: false,
-})
-const modalTranslateY = ref(0)
+const isDragging = ref(false)
+const dragStartY = ref(0)
+const dragOffset = ref(0)
 
 function handleTouchStart(e) {
-  touchState.value.startY = e.touches[0].clientY
-  touchState.value.isDragging = true
+  dragStartY.value = e.touches[0].clientY
+  isDragging.value = true
 }
 
 function handleTouchMove(e) {
-  if (!touchState.value.isDragging) return
+  if (!isDragging.value) return
 
   const currentY = e.touches[0].clientY
-  const deltaY = currentY - touchState.value.startY
+  const deltaY = currentY - dragStartY.value
 
   // 只允許向下拖動
   if (deltaY > 0) {
-    modalTranslateY.value = deltaY
-    // 防止過度拖動時影響內部滾動
+    dragOffset.value = deltaY
+    // 防止拖動時觸發內部滾動
     e.preventDefault()
   }
 }
 
 function handleTouchEnd() {
-  if (!touchState.value.isDragging) return
+  if (!isDragging.value) return
 
-  const threshold = 100 // 滑動超過 100px 就關閉
+  const threshold = 120 // 滑動超過 120px 就關閉
 
-  if (modalTranslateY.value > threshold) {
+  if (dragOffset.value > threshold) {
     emit('update:show', false)
   }
 
   // 重置狀態
-  modalTranslateY.value = 0
-  touchState.value.isDragging = false
+  isDragging.value = false
+  dragOffset.value = 0
 }
 
 const formattedDate = computed(() => {
@@ -173,10 +172,6 @@ function onThumbError(e) {
   display: flex;
   flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  transition: transform 0.2s ease-out;
-}
-.modal:has(.modal__header:active) {
-  transition: none;
 }
 .modal__header {
   display: flex; align-items: center; justify-content: space-between;
