@@ -31,7 +31,13 @@
             @touchend="handleTouchEnd"
           >
             <div class="modal__handle" aria-hidden="true"></div>
-            <h2 class="modal__title">{{ formattedDate }} 的影片</h2>
+            <template v-if="activeVideoIndex !== null">
+              <button class="modal__back" aria-label="返回列表" @click="goBack">
+                <ArrowLeft :size="20" :stroke-width="2" />
+              </button>
+              <h2 class="modal__title">第 {{ activeVideo.match_no }} 局</h2>
+            </template>
+            <h2 v-else class="modal__title">{{ formattedDate }} 的影片</h2>
             <button
               class="modal__close"
               aria-label="關閉"
@@ -41,36 +47,73 @@
             </button>
           </div>
 
-          <ol class="video-list" aria-label="影片清單">
-            <li
-              v-for="v in videos"
-              :key="v.video_id"
-              class="video-item"
-            >
-              <a
-                :href="`https://www.youtube.com/watch?v=${v.video_id}`"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="video-item__link"
+          <Transition :name="transitionDirection" mode="out-in">
+            <ol v-if="activeVideoIndex === null" key="list" class="video-list" aria-label="影片清單">
+              <li
+                v-for="(v, index) in videos"
+                :key="v.video_id"
+                class="video-item"
               >
-                <div class="video-item__thumb">
-                  <img
-                    :src="`https://i.ytimg.com/vi/${v.video_id}/mqdefault.jpg`"
-                    :alt="`第 ${v.match_no} 局縮圖`"
-                    loading="lazy"
-                    @error="onThumbError"
-                  >
-                  <div class="video-item__thumb-fallback" aria-hidden="true">
-                    <Play :size="20" :stroke-width="2" />
+                <a
+                  :href="`https://www.youtube.com/watch?v=${v.video_id}`"
+                  class="video-item__link"
+                  @click.prevent="playVideo(index)"
+                >
+                  <div class="video-item__thumb">
+                    <img
+                      :src="`https://i.ytimg.com/vi/${v.video_id}/mqdefault.jpg`"
+                      :alt="`第 ${v.match_no} 局縮圖`"
+                      loading="lazy"
+                      @error="onThumbError"
+                    >
+                    <div class="video-item__thumb-fallback" aria-hidden="true">
+                      <Play :size="20" :stroke-width="2" />
+                    </div>
                   </div>
-                </div>
-                <div class="video-item__body">
-                  <p class="video-item__match">第 {{ v.match_no }} 局</p>
-                  <p class="video-item__names">{{ extractNames(v.title) }}</p>
-                </div>
-              </a>
-            </li>
-          </ol>
+                  <div class="video-item__body">
+                    <p class="video-item__match">第 {{ v.match_no }} 局</p>
+                    <p class="video-item__names">{{ extractNames(v.title) }}</p>
+                  </div>
+                </a>
+              </li>
+            </ol>
+
+            <div v-else :key="activeVideo.video_id" class="player-view">
+              <div class="player-view__iframe-wrap">
+                <iframe
+                  :src="embedUrl"
+                  class="player-view__iframe"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowfullscreen
+                ></iframe>
+              </div>
+              <div class="player-view__info">
+                <p class="player-view__names">{{ extractNames(activeVideo.title) }}</p>
+              </div>
+              <div class="player-view__nav">
+                <button
+                  class="player-view__nav-btn"
+                  :disabled="!hasPrev"
+                  @click="prevVideo"
+                >
+                  <ChevronLeft :size="18" :stroke-width="2" />
+                  上一局
+                </button>
+                <span class="player-view__counter">
+                  {{ activeVideoIndex + 1 }} / {{ videos.length }}
+                </span>
+                <button
+                  class="player-view__nav-btn"
+                  :disabled="!hasNext"
+                  @click="nextVideo"
+                >
+                  下一局
+                  <ChevronRight :size="18" :stroke-width="2" />
+                </button>
+              </div>
+            </div>
+          </Transition>
         </motion.div>
       </motion.div>
     </AnimatePresence>
@@ -80,7 +123,7 @@
 <script setup>
 import { computed, watch, ref } from 'vue'
 import { motion, AnimatePresence } from 'motion-v'
-import { X, Play } from 'lucide-vue-next'
+import { X, Play, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps({
   show:        { type: Boolean, default: false },
@@ -90,12 +133,49 @@ const props = defineProps({
 
 const emit = defineEmits(['update:show'])
 
+// Player view state
+const activeVideoIndex = ref(null)
+const transitionDirection = ref('slide-left')
+
+const activeVideo = computed(() =>
+  activeVideoIndex.value !== null ? props.videos[activeVideoIndex.value] : null
+)
+const hasPrev = computed(() =>
+  activeVideoIndex.value !== null && activeVideoIndex.value > 0
+)
+const hasNext = computed(() =>
+  activeVideoIndex.value !== null && activeVideoIndex.value < props.videos.length - 1
+)
+const embedUrl = computed(() => {
+  if (!activeVideo.value) return ''
+  return `https://www.youtube.com/embed/${activeVideo.value.video_id}?autoplay=1&playsinline=1&rel=0`
+})
+
+function playVideo(index) {
+  transitionDirection.value = 'slide-left'
+  activeVideoIndex.value = index
+}
+
+function goBack() {
+  transitionDirection.value = 'slide-right'
+  activeVideoIndex.value = null
+}
+
+function prevVideo() {
+  if (hasPrev.value) activeVideoIndex.value--
+}
+
+function nextVideo() {
+  if (hasNext.value) activeVideoIndex.value++
+}
+
 // Scroll Lock: 阻止背景滾動
 watch(() => props.show, (isOpen) => {
   if (isOpen) {
     document.body.style.overflow = 'hidden'
   } else {
     document.body.style.overflow = ''
+    activeVideoIndex.value = null
   }
 })
 
@@ -264,4 +344,91 @@ function onThumbError(e) {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
+
+/* Back button */
+.modal__back {
+  background: none; border: none; padding: 4px;
+  color: var(--text-primary); cursor: pointer;
+  display: flex; align-items: center;
+  touch-action: manipulation;
+  margin-top: 8px;
+}
+
+/* Player view */
+.player-view {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.player-view__iframe-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+.player-view__iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+.player-view__info {
+  padding: 0 4px;
+}
+.player-view__names {
+  font-size: 13px; color: var(--text-secondary);
+  margin: 0;
+}
+.player-view__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px;
+}
+.player-view__nav-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 13px; font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.player-view__nav-btn:disabled {
+  opacity: 0.3; cursor: default;
+}
+.player-view__nav-btn:not(:disabled):active {
+  background: var(--surface-tinted);
+  border-color: var(--primary);
+}
+@media (hover: hover) {
+  .player-view__nav-btn:not(:disabled):hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+}
+.player-view__counter {
+  font-size: 12px; font-weight: 600;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* View transition animations */
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.slide-left-enter-from { transform: translateX(30px); opacity: 0; }
+.slide-left-leave-to   { transform: translateX(-30px); opacity: 0; }
+.slide-right-enter-from { transform: translateX(-30px); opacity: 0; }
+.slide-right-leave-to   { transform: translateX(30px); opacity: 0; }
 </style>
