@@ -7,6 +7,8 @@
     :animate="{ opacity: 1, x: 0 }"
     :transition="{ duration: 0.35, ease: 'easeOut', delay: rank * 0.06 }"
     :whileHover="{ x: 4, boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }"
+    :whilePress="{ scale: 0.98 }"
+    @click="$emit('select', member.id)"
   >
     <span class="rank-icon" aria-hidden="true">
       <Medal v-if="rank <= 3" :size="22" :stroke-width="2.2" :style="{ color: medalColor }" />
@@ -41,6 +43,8 @@ const props = defineProps({
   maxCount: { type: Number, required: true },
 })
 
+defineEmits(['select'])
+
 const medalColor = computed(() => {
   const colors = { 1: '#FFD700', 2: '#A0AEC0', 3: '#CD7F32' }
   return colors[props.rank]
@@ -62,6 +66,8 @@ const barWidth = computed(() =>
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   list-style: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .rank-card--top {
   background: var(--surface-secondary);

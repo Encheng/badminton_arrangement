@@ -14,6 +14,8 @@
         :animate="{ opacity: badge.unlocked ? 1 : 0.28, scale: 1 }"
         :transition="{ type: 'spring', stiffness: 350, damping: 20, delay: i * 0.05 }"
         :whileHover="badge.unlocked ? { scale: 1.1, y: -2 } : {}"
+        :whilePress="{ scale: 0.95 }"
+        @click="openDetail(badge)"
       >
         <div class="badge__icon" aria-hidden="true" :style="badge.unlocked ? { color: badge.color } : {}">
           <component :is="iconMap[badge.icon]" :size="22" :stroke-width="2" />
@@ -21,15 +23,21 @@
         <div class="badge__name">{{ badge.name }}</div>
       </motion.div>
     </div>
+
+    <BadgeDetailSheet
+      v-model:show="showDetail"
+      :badge="selectedBadge"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { motion } from 'motion-v'
 import { Flame, Hash, Star, Gem, Rocket, Target, Medal, Crown } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
 import { getBadges } from '../utils/badges.js'
+import BadgeDetailSheet from './BadgeDetailSheet.vue'
 
 const iconMap = { Flame, Hash, Star, Gem, Rocket, Target, Medal, Crown }
 
@@ -44,6 +52,14 @@ const headingId = `badge-heading-${props.memberId}`
 const badges = computed(() =>
   getBadges(props.memberId, store.sessions, store.members)
 )
+
+const showDetail = ref(false)
+const selectedBadge = ref(null)
+
+function openDetail(badge) {
+  selectedBadge.value = badge
+  showDetail.value = true
+}
 </script>
 
 <style scoped>
@@ -63,6 +79,8 @@ const badges = computed(() =>
   text-align: center;
   border: 1px solid rgba(98, 0, 238, 0.1);
   box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .badge__icon { margin-bottom: 4px; display: flex; justify-content: center; }
 .badge__name { font-size: 10px; color: var(--text-secondary); line-height: 1.3; }

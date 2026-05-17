@@ -65,4 +65,34 @@ describe('getBadges', () => {
     const badges = getBadges('m1', [], members)
     expect(badges).toHaveLength(8)
   })
+
+  it('every badge has a desc field', () => {
+    const badges = getBadges('m1', [], members)
+    for (const b of badges) {
+      expect(b.desc).toBeDefined()
+      expect(typeof b.desc).toBe('string')
+      expect(b.desc.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('returns progress data for quantifiable badges', () => {
+    const sessions = [
+      makeSession('2026-04-05', ['m1']),
+      makeSession('2026-04-12', ['m1']),
+      makeSession('2026-04-19', ['m1']),
+    ]
+    const badges = getBadges('m1', sessions, members)
+
+    const streak5 = badges.find(b => b.id === 'streak_5')
+    expect(streak5.progress).toEqual({ current: 3, target: 5, label: '連續週數' })
+
+    const count10 = badges.find(b => b.id === 'count_10')
+    expect(count10.progress).toEqual({ current: 3, target: 10, label: '出席次數' })
+  })
+
+  it('returns null progress for week_champ', () => {
+    const badges = getBadges('m1', [], members)
+    const weekChamp = badges.find(b => b.id === 'week_champ')
+    expect(weekChamp.progress).toBeNull()
+  })
 })

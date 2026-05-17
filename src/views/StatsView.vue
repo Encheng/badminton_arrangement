@@ -39,6 +39,7 @@
         <p class="empty-state__title">尚無出席記錄</p>
       </div>
       <template v-else>
+        <p class="rank-hint">點擊成員查看個人成就</p>
         <ol aria-label="出席排行榜" class="rank-list">
           <RankCard
             v-for="(entry, i) in leaderboard"
@@ -47,42 +48,30 @@
             :member="entry.member"
             :count="entry.count"
             :max-count="leaderboard[0].count"
+            @select="openMemberBadges"
           />
         </ol>
-
-        <!-- 選取成員查看徽章 -->
-        <div class="member-selector">
-          <label for="badge-member-select" class="section-heading">
-            查看個人成就
-          </label>
-          <select
-            id="badge-member-select"
-            v-model="selectedMemberId"
-            class="member-select"
-            autocomplete="off"
-          >
-            <option v-for="m in store.activeMembers" :key="m.id" :value="m.id">
-              {{ m.name }}
-            </option>
-          </select>
-        </div>
-
-        <BadgeGrid v-if="selectedMemberId" :member-id="selectedMemberId" />
       </template>
     </motion.main>
+
+    <MemberBadgeSheet
+      v-model:show="showBadgeSheet"
+      :member-id="selectedMemberId"
+      :member-name="selectedMemberName"
+    />
   </div>
   </PullRefresh>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { motion } from 'motion-v'
 import { Trophy } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
 import { buildLeaderboard } from '../utils/stats.js'
 import RankCard from '../components/RankCard.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
-import BadgeGrid from '../components/BadgeGrid.vue'
+import MemberBadgeSheet from '../components/MemberBadgeSheet.vue'
 import PullRefresh from '../components/PullRefresh.vue'
 
 const store = useAppStore()
@@ -96,12 +85,17 @@ const leaderboard = computed(() =>
   buildLeaderboard(store.members, store.sessions)
 )
 
+const showBadgeSheet = ref(false)
 const selectedMemberId = ref(null)
-watch(() => store.activeMembers, (members) => {
-  if (!selectedMemberId.value && members.length) {
-    selectedMemberId.value = members[0].id
-  }
-}, { immediate: true })
+const selectedMemberName = ref('')
+
+function openMemberBadges(memberId) {
+  const entry = leaderboard.value.find(e => e.member.id === memberId)
+  if (!entry) return
+  selectedMemberId.value = memberId
+  selectedMemberName.value = entry.member.name
+  showBadgeSheet.value = true
+}
 </script>
 
 <style scoped>
@@ -129,30 +123,13 @@ watch(() => store.activeMembers, (members) => {
   margin-top: -20px;
 }
 
+.rank-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: 0 0 12px;
+}
 .rank-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
-
-.member-selector { margin-top: 20px; }
-.section-heading {
-  display: block;
-  font-size: 12px; font-weight: 700; color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;
-}
-.member-select {
-  width: 100%;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  font-size: 15px;
-  color: var(--text-primary);
-  touch-action: manipulation;
-  outline: none;
-  color-scheme: light;
-}
-.member-select:focus-visible {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(98, 0, 238, 0.15);
-}
 
 .skeleton-state { display: flex; flex-direction: column; gap: 8px; }
 .skeleton-rank {
