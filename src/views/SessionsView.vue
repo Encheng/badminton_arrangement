@@ -86,6 +86,7 @@
                 </button>
               </div>
               <label class="filter-jump">
+                <CalendarSearch :size="18" :stroke-width="2" class="filter-jump__icon" />
                 <input
                   type="month"
                   class="filter-jump__input"
@@ -366,7 +367,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { motion, AnimatePresence } from 'motion-v'
-import { ClipboardList, Plus } from 'lucide-vue-next'
+import { ClipboardList, Plus, CalendarSearch } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
 import { getTodayStr, getComingSaturday, getNextSaturdayAfter } from '../utils/date.js'
 import { getCurrentStreak } from '../utils/stats.js'
@@ -947,25 +948,41 @@ async function handleAddSession() {
 }
 
 .filter-jump {
+  position: relative;
   flex-shrink: 0;
-}
-.filter-jump__input {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   background: var(--surface);
   border: 1.5px solid var(--border);
-  border-radius: 20px;
-  padding: 6px 10px;
-  font-size: 12px;
-  color: var(--text-secondary);
+  border-radius: 50%;
   cursor: pointer;
-  width: 36px;
-  max-width: 40px;
-  opacity: 0.7;
-  transition: opacity 0.15s ease;
-  -webkit-appearance: none;
-  appearance: none;
+  transition: border-color 0.15s ease, opacity 0.15s ease;
 }
-.filter-jump__input:focus,
-.filter-jump__input:hover { opacity: 1; border-color: var(--primary); }
+.filter-jump:hover,
+.filter-jump:focus-within {
+  border-color: var(--primary);
+}
+.filter-jump__icon {
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+.filter-jump__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  margin: 0;
+  /* allow native picker to trigger on desktop while staying invisible */
+  color: transparent;
+  background: transparent;
+}
 
 .empty-filter {
   text-align: center;
