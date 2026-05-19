@@ -124,6 +124,13 @@
 import { computed, watch, ref } from 'vue'
 import { motion, AnimatePresence } from 'motion-v'
 import { X, Play, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import {
+  trackVideoListOpened,
+  trackVideoPlayClick,
+  trackVideoPlayerNavigation,
+  trackVideoPlayerBack,
+  trackVideoModalClose,
+} from '../utils/analytics'
 
 const props = defineProps({
   show:        { type: Boolean, default: false },
@@ -136,6 +143,10 @@ const emit = defineEmits(['update:show'])
 // Player view state
 const activeVideoIndex = ref(null)
 const transitionDirection = ref('slide-left')
+
+// Analytics tracking
+const modalOpenedAt = ref(null)
+const videoPlayStartedAt = ref(null)
 
 const activeVideo = computed(() =>
   activeVideoIndex.value !== null ? props.videos[activeVideoIndex.value] : null
@@ -154,28 +165,100 @@ const embedUrl = computed(() => {
 function playVideo(index) {
   transitionDirection.value = 'slide-left'
   activeVideoIndex.value = index
+  videoPlayStartedAt.value = Date.now()
+
+  // 追蹤：點擊播放影片
+  const video = props.videos[index]
+  trackVideoPlayClick({
+    sessionDate: props.sessionDate,
+    videoId: video.video_id,
+    matchNo: video.match_no,
+    videoIndex: index,
+    totalVideos: props.videos.length,
+  })
 }
 
 function goBack() {
+  // 追蹤：返回影片列表
+  if (activeVideo.value && videoPlayStartedAt.value) {
+    const timeSpent = Math.round((Date.now() - videoPlayStartedAt.value) / 1000)
+    trackVideoPlayerBack({
+      sessionDate: props.sessionDate,
+      matchNo: activeVideo.value.match_no,
+      timeSpent,
+    })
+  }
+
   transitionDirection.value = 'slide-right'
   activeVideoIndex.value = null
+  videoPlayStartedAt.value = null
 }
 
 function prevVideo() {
-  if (hasPrev.value) activeVideoIndex.value--
+  if (!hasPrev.value) return
+
+  const fromMatchNo = props.videos[activeVideoIndex.value].match_no
+  const toMatchNo = props.videos[activeVideoIndex.value - 1].match_no
+
+  activeVideoIndex.value--
+  videoPlayStartedAt.value = Date.now()
+
+  // 追蹤：導航到上一局
+  trackVideoPlayerNavigation({
+    direction: 'prev',
+    fromMatchNo,
+    toMatchNo,
+    sessionDate: props.sessionDate,
+  })
 }
 
 function nextVideo() {
-  if (hasNext.value) activeVideoIndex.value++
+  if (!hasNext.value) return
+
+  const fromMatchNo = props.videos[activeVideoIndex.value].match_no
+  const toMatchNo = props.videos[activeVideoIndex.value + 1].match_no
+
+  activeVideoIndex.value++
+  videoPlayStartedAt.value = Date.now()
+
+  // 追蹤：導航到下一局
+  trackVideoPlayerNavigation({
+    direction: 'next',
+    fromMatchNo,
+    toMatchNo,
+    sessionDate: props.sessionDate,
+  })
 }
 
-// Scroll Lock: 阻止背景滾動
+// Scroll Lock: 阻止背景滾動 + Analytics
 watch(() => props.show, (isOpen) => {
   if (isOpen) {
     document.body.style.overflow = 'hidden'
+    modalOpenedAt.value = Date.now()
+
+    // 追蹤：影片列表成功展開
+    trackVideoListOpened({
+      sessionDate: props.sessionDate,
+      videoCount: props.videos.length,
+    })
   } else {
     document.body.style.overflow = ''
+
+    // 追蹤：關閉影片 modal
+    if (modalOpenedAt.value) {
+      const viewDuration = Math.round((Date.now() - modalOpenedAt.value) / 1000)
+      trackVideoModalClose({
+        sessionDate: props.sessionDate,
+        videoCount: props.videos.length,
+        wasPlaying: activeVideoIndex.value !== null,
+        matchNo: activeVideo.value?.match_no,
+        viewDuration,
+      })
+    }
+
     activeVideoIndex.value = null
+    modalOpenedAt.value = null
+    videoPlayStartedAt.value = null
   }
 })
 

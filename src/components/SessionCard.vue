@@ -24,7 +24,7 @@
       <button
         v-if="!isFuture && !isCurrent && videoCount > 0"
         class="card__videos-btn"
-        @click.stop="$emit('view-videos')"
+        @click.stop="handleViewVideos"
       >
         <Video :size="14" :stroke-width="2" />
         {{ videoCount }} 支影片
@@ -60,6 +60,7 @@
 import { computed } from 'vue'
 import { motion } from 'motion-v'
 import { Video } from 'lucide-vue-next'
+import { trackVideoButtonClick } from '../utils/analytics'
 
 const props = defineProps({
   session:    { type: Object,  required: true },
@@ -69,7 +70,17 @@ const props = defineProps({
   videoCount: { type: Number,  default: 0 },
 })
 
-defineEmits(['edit', 'delete', 'copy', 'view-videos'])
+const emit = defineEmits(['edit', 'delete', 'copy', 'view-videos'])
+
+function handleViewVideos() {
+  // 追蹤：點擊「N 支影片」按鈕
+  trackVideoButtonClick({
+    sessionDate: props.session.date,
+    videoCount: props.videoCount,
+    source: 'session_card',
+  })
+  emit('view-videos')
+}
 
 const formattedDate = computed(() => {
   const d = new Date(props.session.date + 'T00:00:00')
