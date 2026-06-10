@@ -42,6 +42,7 @@
           </div>
 
           <div class="modal__body">
+            <AttendanceHeatmap v-if="memberId" :member-id="memberId" />
             <BadgeGrid v-if="memberId" :member-id="memberId" />
           </div>
         </motion.div>
@@ -55,6 +56,7 @@ import { watch, ref } from 'vue'
 import { motion, AnimatePresence } from 'motion-v'
 import { X } from 'lucide-vue-next'
 import BadgeGrid from './BadgeGrid.vue'
+import AttendanceHeatmap from './AttendanceHeatmap.vue'
 
 const props = defineProps({
   show:       { type: Boolean, default: false },
@@ -147,5 +149,9 @@ function handleTouchEnd() {
 }
 .modal__body {
   padding: 4px 16px 20px;
+  max-height: 70dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 </style>
