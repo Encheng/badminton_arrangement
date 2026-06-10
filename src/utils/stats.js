@@ -30,6 +30,11 @@ export function getCurrentStreak(memberId, sessions, todayStr = getTodayStr()) {
   return streak
 }
 
+/**
+ * 建立排行榜。同分使用標準競賽排名（1, 2, 2, 4），
+ * 同分者之間以姓名排序確保顯示順序穩定。
+ * 回傳 [{ member, count, rank }]。
+ */
 export function buildLeaderboard(members, sessions, todayStr = getTodayStr()) {
   const counts = {}
   for (const session of excludeFutureSessions(sessions, todayStr)) {
@@ -39,8 +44,23 @@ export function buildLeaderboard(members, sessions, todayStr = getTodayStr()) {
       }
     }
   }
-  return members
+  const entries = members
     .filter(m => m.active || counts[m.id])
     .map(m => ({ member: m, count: counts[m.id] || 0 }))
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) =>
+      b.count - a.count ||
+      a.member.name.localeCompare(b.member.name, 'zh-TW')
+    )
+
+  // 標準競賽排名：同分同名次，下一個不同分數跳至實際名次
+  let prevCount = null
+  let prevRank = 0
+  entries.forEach((entry, i) => {
+    if (entry.count !== prevCount) {
+      prevRank = i + 1
+      prevCount = entry.count
+    }
+    entry.rank = prevRank
+  })
+  return entries
 }

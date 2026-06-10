@@ -84,6 +84,27 @@ describe('getBadges', () => {
     expect(m2Badges.find(b => b.id === 'annual_top').unlocked).toBe(false)
   })
 
+  it('unlocks annual_top and week_champ for ALL tied members', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-20T12:00:00'))
+
+    // m1 與 m2 同為 3 次，且都出席最近一場
+    const sessions = [
+      makeSession('2026-04-05', ['m1', 'm2']),
+      makeSession('2026-04-12', ['m1', 'm2']),
+      makeSession('2026-04-19', ['m1', 'm2']),
+    ]
+    const m1Badges = getBadges('m1', sessions, members)
+    const m2Badges = getBadges('m2', sessions, members)
+    expect(m1Badges.find(b => b.id === 'annual_top').unlocked).toBe(true)
+    expect(m2Badges.find(b => b.id === 'annual_top').unlocked).toBe(true)
+    expect(m1Badges.find(b => b.id === 'week_champ').unlocked).toBe(true)
+    expect(m2Badges.find(b => b.id === 'week_champ').unlocked).toBe(true)
+    // 同分並列第一，兩人的年度排名都應為第 1
+    expect(m1Badges.find(b => b.id === 'annual_top').progress.label).toContain('第 1')
+    expect(m2Badges.find(b => b.id === 'annual_top').progress.label).toContain('第 1')
+  })
+
   it('returns all 8 badge definitions for any member', () => {
     const badges = getBadges('m1', [], members)
     expect(badges).toHaveLength(8)

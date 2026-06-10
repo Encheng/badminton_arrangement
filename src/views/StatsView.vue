@@ -44,7 +44,8 @@
           <RankCard
             v-for="(entry, i) in leaderboard"
             :key="entry.member.id"
-            :rank="i + 1"
+            :rank="entry.rank"
+            :index="i"
             :member="entry.member"
             :count="entry.count"
             :max-count="leaderboard[0].count"

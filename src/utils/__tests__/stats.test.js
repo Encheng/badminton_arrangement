@@ -126,4 +126,33 @@ describe('buildLeaderboard', () => {
     const lisa = board.find(e => e.member.id === 'm3')
     expect(lisa.count).toBe(0)
   })
+
+  it('assigns the same rank to tied members (competition ranking)', () => {
+    // 讓 m2 補齊 s2，與 m1 同為 3 次
+    const tied = sessions.map(s =>
+      s.session_id === 's2'
+        ? { ...s, attendances: [...s.attendances, { member_id: 'm2', name: 'Andy', type: 'member' }] }
+        : s
+    )
+    const board = buildLeaderboard(members, tied, '2026-04-19')
+    const m1 = board.find(e => e.member.id === 'm1')
+    const m2 = board.find(e => e.member.id === 'm2')
+    const m3 = board.find(e => e.member.id === 'm3')
+    expect(m1.rank).toBe(1)
+    expect(m2.rank).toBe(1)
+    // 同分佔據前兩名，下一名應為第 3（1, 1, 3）
+    expect(m3.rank).toBe(3)
+  })
+
+  it('orders tied members deterministically by name', () => {
+    const tied = sessions.map(s =>
+      s.session_id === 's2'
+        ? { ...s, attendances: [...s.attendances, { member_id: 'm2', name: 'Andy', type: 'member' }] }
+        : s
+    )
+    const board = buildLeaderboard(members, tied, '2026-04-19')
+    // Andy 與 Peter 同分，依姓名排序 Andy 在前
+    expect(board[0].member.name).toBe('Andy')
+    expect(board[1].member.name).toBe('Peter')
+  })
 })

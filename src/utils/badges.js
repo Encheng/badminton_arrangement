@@ -44,8 +44,9 @@ function isAnnualTop(memberId, sessions, members) {
   }))
   const max = Math.max(...counts.map(c => c.count))
   if (max === 0) return false
-  const topId = counts.find(c => c.count === max)?.id
-  return topId === memberId
+  // 同分並列第一時，所有並列者都算「最佳球員」
+  const myCount = counts.find(c => c.id === memberId)?.count || 0
+  return myCount === max
 }
 
 function getAnnualRankInfo(memberId, sessions, members) {
@@ -54,10 +55,11 @@ function getAnnualRankInfo(memberId, sessions, members) {
   const counts = members.map(m => ({
     id: m.id,
     count: getAttendanceCount(m.id, yearSessions),
-  })).sort((a, b) => b.count - a.count)
+  }))
   const myCount = counts.find(c => c.id === memberId)?.count || 0
-  const rank = counts.findIndex(c => c.id === memberId) + 1
-  const topCount = counts[0]?.count || 0
+  // 標準競賽排名：比我多的人數 + 1，同分同名次
+  const rank = counts.filter(c => c.count > myCount).length + 1
+  const topCount = Math.max(...counts.map(c => c.count), 0)
   return { rank, myCount, topCount }
 }
 
@@ -168,8 +170,9 @@ export const BADGE_DEFINITIONS = [
       }))
       const max = Math.max(...counts.map(c => c.count))
       if (max === 0) return false
-      const topId = counts.find(c => c.count === max)?.id
-      return topId === id && latest.attendances.some(a => a.member_id === id)
+      // 同分並列時，所有並列者只要有出席最近一場都算週冠軍
+      const myCount = counts.find(c => c.id === id)?.count || 0
+      return myCount === max && latest.attendances.some(a => a.member_id === id)
     },
     progress: null,
   },
