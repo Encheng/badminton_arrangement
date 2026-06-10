@@ -1,5 +1,5 @@
 // src/utils/badges.js
-import { getAttendanceCount, getCurrentStreak } from './stats.js'
+import { getAttendanceCount, getCurrentStreak, excludeFutureSessions } from './stats.js'
 
 function hasMonthlyPerfectAttendance(memberId, sessions) {
   const byMonth = {}
@@ -176,13 +176,15 @@ export const BADGE_DEFINITIONS = [
 ]
 
 export function getBadges(memberId, sessions, members) {
+  // 徽章判斷只看已發生的場次，避免未來預排名單影響結果
+  const pastSessions = excludeFutureSessions(sessions)
   return BADGE_DEFINITIONS.map(def => ({
     id: def.id,
     icon: def.icon,
     color: def.color,
     name: def.name,
     desc: def.desc,
-    unlocked: def.check(memberId, sessions, members),
-    progress: def.progress ? def.progress(memberId, sessions, members) : null,
+    unlocked: def.check(memberId, pastSessions, members),
+    progress: def.progress ? def.progress(memberId, pastSessions, members) : null,
   }))
 }

@@ -1,6 +1,6 @@
 // src/utils/__tests__/stats.test.js
 import { describe, it, expect } from 'vitest'
-import { buildLeaderboard, getAttendanceCount, getCurrentStreak } from '../stats.js'
+import { buildLeaderboard, getAttendanceCount, getCurrentStreak, excludeFutureSessions } from '../stats.js'
 
 const sessions = [
   {
@@ -32,11 +32,34 @@ const members = [
   { id: 'm3', name: 'Lisa',  active: true },
 ]
 
+describe('excludeFutureSessions', () => {
+  it('keeps sessions on or before today, drops future ones', () => {
+    const list = [
+      { date: '2026-04-12', attendances: [] },
+      { date: '2026-04-19', attendances: [] },
+      { date: '2026-04-26', attendances: [] },
+    ]
+    const result = excludeFutureSessions(list, '2026-04-19')
+    expect(result.map(s => s.date)).toEqual(['2026-04-12', '2026-04-19'])
+  })
+})
+
 describe('getAttendanceCount', () => {
   it('counts sessions where member attended', () => {
     expect(getAttendanceCount('m1', sessions)).toBe(3)
     expect(getAttendanceCount('m2', sessions)).toBe(2)
     expect(getAttendanceCount('m3', sessions)).toBe(0)
+  })
+
+  it('does not count future pre-arranged sessions', () => {
+    const withFuture = [
+      ...sessions,
+      {
+        session_id: 's-future', date: '2099-01-01',
+        attendances: [{ member_id: 'm1', name: 'Peter', type: 'member' }],
+      },
+    ]
+    expect(getAttendanceCount('m1', withFuture, '2026-04-19')).toBe(3)
   })
 })
 
@@ -48,6 +71,20 @@ describe('getCurrentStreak', () => {
     expect(getCurrentStreak('m2', sessions)).toBe(1)
     // m3 never attended — streak 0
     expect(getCurrentStreak('m3', sessions)).toBe(0)
+  })
+
+  it('is not broken by a future session the member is not yet checked into', () => {
+    const withFuture = [
+      ...sessions,
+      {
+        session_id: 's-future', date: '2099-01-01',
+        attendances: [{ member_id: 'm2', name: 'Andy', type: 'member' }], // m1 不在下週名單
+      },
+    ]
+    // m1 的連續週數不應因未來場次沒勾而歸零
+    expect(getCurrentStreak('m1', withFuture, '2026-04-19')).toBe(3)
+    // m2 也不應因被預勾進未來場次而多算一週
+    expect(getCurrentStreak('m2', withFuture, '2026-04-19')).toBe(1)
   })
 })
 
@@ -73,5 +110,20 @@ describe('buildLeaderboard', () => {
     ]
     const board = buildLeaderboard(withInactive, sessionsWithTom)
     expect(board.some(e => e.member.id === 'm4')).toBe(true)
+  })
+
+  it('excludes future sessions from counts', () => {
+    const withFuture = [
+      ...sessions,
+      {
+        session_id: 's-future', date: '2099-01-01',
+        attendances: [
+          { member_id: 'm3', name: 'Lisa', type: 'member' },
+        ],
+      },
+    ]
+    const board = buildLeaderboard(members, withFuture, '2026-04-19')
+    const lisa = board.find(e => e.member.id === 'm3')
+    expect(lisa.count).toBe(0)
   })
 })

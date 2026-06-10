@@ -1,5 +1,5 @@
 // src/utils/__tests__/badges.test.js
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { getBadges } from '../badges.js'
 
 function makeSession(date, memberIds) {
@@ -16,6 +16,29 @@ const members = [
 ]
 
 describe('getBadges', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('ignores future pre-arranged sessions when judging badges', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-20T12:00:00'))
+
+    const sessions = [
+      makeSession('2026-03-22', ['m1']),
+      makeSession('2026-03-29', ['m1']),
+      makeSession('2026-04-05', ['m1']),
+      makeSession('2026-04-12', ['m1']),
+      makeSession('2026-04-19', ['m1']),
+      makeSession('2026-04-26', ['m2']), // 未來場次，m1 尚未被勾進名單
+    ]
+    const badges = getBadges('m1', sessions, members)
+    // 連續 5 週不應被未來場次中斷
+    expect(badges.find(b => b.id === 'streak_5').unlocked).toBe(true)
+    // 出席次數也不應計入未來場次（m1 應為 5 次）
+    expect(badges.find(b => b.id === 'count_10').progress.current).toBe(5)
+  })
+
   it('unlocks count_10 when member attended 10+ times', () => {
     const sessions = Array.from({ length: 10 }, (_, i) =>
       makeSession(`2026-0${Math.floor(i/4)+1}-${String((i%4)*7+1).padStart(2,'0')}`, ['m1'])

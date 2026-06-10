@@ -12,7 +12,7 @@
       <div class="hero__content">
         <p class="hero__eyebrow">統計 &amp; 榮譽</p>
         <h1 class="hero__title">排行榜</h1>
-        <p class="hero__meta">共 {{ store.sessions.length }} 週統計</p>
+        <p class="hero__meta">共 {{ pastSessionCount }} 週統計</p>
       </div>
     </motion.header>
 
@@ -68,7 +68,7 @@ import { ref, computed } from 'vue'
 import { motion } from 'motion-v'
 import { Trophy } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
-import { buildLeaderboard } from '../utils/stats.js'
+import { buildLeaderboard, excludeFutureSessions } from '../utils/stats.js'
 import RankCard from '../components/RankCard.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
 import MemberBadgeSheet from '../components/MemberBadgeSheet.vue'
@@ -83,6 +83,10 @@ async function onRefresh({ done, fail }) {
 
 const leaderboard = computed(() =>
   buildLeaderboard(store.members, store.sessions)
+)
+
+const pastSessionCount = computed(() =>
+  excludeFutureSessions(store.sessions).length
 )
 
 const showBadgeSheet = ref(false)
