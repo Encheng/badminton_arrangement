@@ -64,3 +64,15 @@ export function buildLeaderboard(members, sessions, todayStr = getTodayStr()) {
   })
   return entries
 }
+
+/**
+ * 取得某成員在 beforeDate 之前（不含當日）最近一次出席的場次。
+ * 以 name 比對，固定成員與臨時成員（member_id 為 null）皆適用。
+ * 查無紀錄回傳 null。
+ */
+export function getLastAttendance(sessions, name, beforeDate) {
+  const past = sessions
+    .filter(s => s.date < beforeDate && s.attendances.some(a => a.name === name))
+    .sort((a, b) => b.date.localeCompare(a.date))
+  return past[0] ?? null
+}

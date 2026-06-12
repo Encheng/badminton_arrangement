@@ -36,3 +36,12 @@ export function getNextSaturdayAfter(dateStr) {
   d.setDate(d.getDate() + 7)
   return toLocalDateStr(d)
 }
+
+/**
+ * 計算兩個 YYYY-MM-DD 日期字串相差的整數天數（to - from）。
+ */
+export function daysBetween(fromDateStr, toDateStr) {
+  const from = new Date(fromDateStr + 'T00:00:00')
+  const to = new Date(toDateStr + 'T00:00:00')
+  return Math.round((to - from) / 86400000)
+}

@@ -1,6 +1,6 @@
 // src/utils/__tests__/stats.test.js
 import { describe, it, expect } from 'vitest'
-import { buildLeaderboard, getAttendanceCount, getCurrentStreak, excludeFutureSessions } from '../stats.js'
+import { buildLeaderboard, getAttendanceCount, getCurrentStreak, excludeFutureSessions, getLastAttendance } from '../stats.js'
 
 const sessions = [
   {
@@ -154,5 +154,34 @@ describe('buildLeaderboard', () => {
     // Andy 與 Peter 同分，依姓名排序 Andy 在前
     expect(board[0].member.name).toBe('Andy')
     expect(board[1].member.name).toBe('Peter')
+  })
+})
+
+describe('getLastAttendance', () => {
+  it('returns the most recent session before the given date that includes the name', () => {
+    const result = getLastAttendance(sessions, 'Peter', '2026-04-19')
+    expect(result.session_id).toBe('s2')
+  })
+
+  it('matches guests by name', () => {
+    const result = getLastAttendance(sessions, '訪客 John', '2026-04-19')
+    expect(result.session_id).toBe('s2')
+  })
+
+  it('excludes the session on the boundary date itself (strictly before)', () => {
+    const result = getLastAttendance(sessions, 'Andy', '2026-04-19')
+    expect(result.session_id).toBe('s1')
+  })
+
+  it('returns null when there is no earlier record', () => {
+    expect(getLastAttendance(sessions, 'Peter', '2026-04-05')).toBeNull()
+  })
+
+  it('returns null for a name that never attended', () => {
+    expect(getLastAttendance(sessions, 'Lisa', '2026-04-19')).toBeNull()
+  })
+
+  it('returns null when all sessions are after the given date', () => {
+    expect(getLastAttendance(sessions, 'Peter', '2026-01-01')).toBeNull()
   })
 })
