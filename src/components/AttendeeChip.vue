@@ -9,6 +9,12 @@
     :whileHover="{ scale: 1.06, y: -2 }"
     :whilePress="{ scale: 0.95 }"
     @click="flip"
+    @pointerdown="onPointerDown"
+    @pointermove="onPointerMove"
+    @pointerup="cancelPress"
+    @pointercancel="cancelPress"
+    @pointerleave="cancelPress"
+    @contextmenu.prevent
   >
     <div class="flip-card" :class="{ flipped }">
       <!-- Front: avatar -->
@@ -25,7 +31,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { motion } from 'motion-v'
 import CuteAnimal from './CuteAnimal.vue'
 
@@ -45,11 +51,56 @@ const props = defineProps({
   delay: { type: Number, default: 0 },
 })
 
+const emit = defineEmits(['longpress'])
+
+const LONG_PRESS_MS = 500
+const MOVE_THRESHOLD_PX = 10
+
+let pressTimer = null
+let startX = 0
+let startY = 0
+let longPressFired = false
+
+function onPointerDown(e) {
+  startX = e.clientX
+  startY = e.clientY
+  longPressFired = false
+  clearTimeout(pressTimer)
+  pressTimer = setTimeout(() => {
+    pressTimer = null
+    longPressFired = true
+    if (navigator.vibrate) navigator.vibrate(10)
+    emit('longpress')
+  }, LONG_PRESS_MS)
+}
+
+function onPointerMove(e) {
+  if (pressTimer === null) return
+  if (
+    Math.abs(e.clientX - startX) > MOVE_THRESHOLD_PX ||
+    Math.abs(e.clientY - startY) > MOVE_THRESHOLD_PX
+  ) {
+    cancelPress()
+  }
+}
+
+function cancelPress() {
+  clearTimeout(pressTimer)
+  pressTimer = null
+}
+
+onUnmounted(cancelPress)
+
 const initial = props.name.charAt(0).toUpperCase()
 const flipped = ref(false)
 const assignedAnimal = ref(ANIMALS[Math.floor(Math.random() * ANIMALS.length)].id)
 
 function flip() {
+  // 長按已觸發時，pointerup 後瀏覽器仍會補發 click，須吞掉避免翻牌
+  if (longPressFired) {
+    longPressFired = false
+    return
+  }
   if (!flipped.value) {
     assignedAnimal.value = ANIMALS[Math.floor(Math.random() * ANIMALS.length)].id
   }
@@ -71,6 +122,9 @@ function flip() {
   border: 1px solid rgba(98, 0, 238, 0.1);
   perspective: 600px;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .flip-card {
