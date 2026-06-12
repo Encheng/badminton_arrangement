@@ -11,7 +11,7 @@ describe('daysBetween', () => {
     expect(daysBetween('2026-06-12', '2026-06-12')).toBe(0)
   })
 
-  it('is not affected by DST-like hour shifts (uses local midnight + rounding)', () => {
+  it('counts consecutive days as 1', () => {
     expect(daysBetween('2026-01-01', '2026-01-02')).toBe(1)
   })
 })
