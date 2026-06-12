@@ -7,11 +7,11 @@
  */
 
 /**
- * 追蹤影片相關事件
+ * 通用事件追蹤
  * @param {string} eventName - 事件名稱
  * @param {object} params - 事件參數
  */
-export function trackVideoEvent(eventName, params = {}) {
+export function trackEvent(eventName, params = {}) {
   // 檢查 gtag 是否可用
   if (typeof window.gtag !== 'function') {
     console.debug('[Analytics]', eventName, params)
@@ -23,6 +23,15 @@ export function trackVideoEvent(eventName, params = {}) {
   } catch (error) {
     console.error('[Analytics] 追蹤失敗:', error)
   }
+}
+
+/**
+ * 追蹤影片相關事件（向後相容別名）
+ * @param {string} eventName - 事件名稱
+ * @param {object} params - 事件參數
+ */
+export function trackVideoEvent(eventName, params = {}) {
+  trackEvent(eventName, params)
 }
 
 /**
@@ -92,5 +101,26 @@ export function trackVideoModalClose({ sessionDate, videoCount, wasPlaying, matc
     was_playing: wasPlaying, // 是否在播放狀態下關閉
     match_no: matchNo || null,
     view_duration_seconds: viewDuration, // modal 開啟總時長（秒）
+  })
+}
+
+/**
+ * 追蹤：長按頭像開啟成員資訊彈窗
+ */
+export function trackAttendeeSheetOpened({ daysSince, hasVideo, hasHistory }) {
+  trackEvent('attendee_sheet_opened', {
+    days_since: daysSince ?? null,
+    has_video: hasVideo,
+    has_history: hasHistory,
+  })
+}
+
+/**
+ * 追蹤：從成員資訊彈窗點擊觀看影片
+ */
+export function trackAttendeeSheetVideoClick({ sessionDate, videoCount }) {
+  trackEvent('attendee_sheet_video_click', {
+    session_date: sessionDate,
+    video_count: videoCount,
   })
 }
