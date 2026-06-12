@@ -16,6 +16,8 @@ async function gasPost(action, body) {
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(body),
+    // 頁面重整/關閉時讓寫入請求繼續送達 GAS，避免操作中斷
+    keepalive: true,
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const json = await res.json()

@@ -15,6 +15,7 @@
       </Transition>
     </RouterView>
     <TabBar />
+    <AppToast />
   </div>
 </template>
 
@@ -22,6 +23,7 @@
 import { ref, onMounted } from 'vue'
 import { useAppStore } from './stores/app.js'
 import TabBar from './components/TabBar.vue'
+import AppToast from './components/AppToast.vue'
 
 const store = useAppStore()
 const transitionName = ref('page-fade')

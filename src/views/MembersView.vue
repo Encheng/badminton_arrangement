@@ -62,17 +62,17 @@
             <span class="member-row__name">{{ m.name }}</span>
             <button
               class="member-row__btn member-row__btn--demote"
-              :disabled="saving.has(m.id)"
+              :disabled="saving.has(m.id) || isTempId(m.id)"
               @click="demoteMember(m)"
             >
               {{ saving.has(m.id) ? '處理中…' : '轉為臨時' }}
             </button>
             <button
               class="member-row__btn member-row__btn--danger"
-              :disabled="saving.has(m.id)"
+              :disabled="saving.has(m.id) || isTempId(m.id)"
               @click="toggleMemberActive(m)"
             >
-              {{ saving.has(m.id) ? '處理中…' : '停用' }}
+              {{ isTempId(m.id) ? '同步中…' : saving.has(m.id) ? '處理中…' : '停用' }}
             </button>
           </div>
         </section>
@@ -92,13 +92,12 @@
             >
             <button
               class="action-btn"
-              :disabled="!newMemberName.trim() || addingMember"
+              :disabled="!newMemberName.trim()"
               @click="addNewMember"
             >
-              {{ addingMember ? '新增中…' : '+ 新增' }}
+              + 新增
             </button>
           </div>
-          <p v-if="addError" class="error-msg">{{ addError }}</p>
         </section>
 
         <!-- 已停用成員 -->
@@ -148,14 +147,12 @@
 import { ref, computed } from 'vue'
 import { motion } from 'motion-v'
 import { Lock } from 'lucide-vue-next'
-import { useAppStore } from '../stores/app.js'
+import { useAppStore, isTempId } from '../stores/app.js'
 import { api } from '../services/api.js'
 
 const store = useAppStore()
 const saving = ref(new Set())
 const newMemberName = ref('')
-const addingMember = ref(false)
-const addError = ref('')
 const loginToken = ref('')
 const loginError = ref(false)
 
@@ -181,10 +178,13 @@ const promotableGuests = computed(() => {
 })
 
 async function toggleMemberActive(member) {
+  const wasActive = member.active
   saving.value = new Set([...saving.value, member.id])
   try {
-    await api.saveMember(store.adminToken, { id: member.id, active: !member.active })
-    await store.init()
+    await store.toggleMemberActiveOptimistic(member)
+    store.showToast(wasActive ? `已停用 ${member.name}` : `已重新啟用 ${member.name}`, 'success')
+  } catch (err) {
+    store.showToast(`操作失敗，已還原：${err.message}`, 'error', 4000)
   } finally {
     const next = new Set(saving.value)
     next.delete(member.id)
@@ -195,16 +195,13 @@ async function toggleMemberActive(member) {
 async function addNewMember() {
   const name = newMemberName.value.trim()
   if (!name) return
-  addingMember.value = true
-  addError.value = ''
+  newMemberName.value = '' // 樂觀更新：立即清空輸入
   try {
-    await api.saveMember(store.adminToken, { name, active: true })
-    await store.init()
-    newMemberName.value = ''
+    await store.addMemberOptimistic(name)
+    store.showToast(`已新增 ${name}`, 'success')
   } catch (err) {
-    addError.value = `新增失敗：${err.message}`
-  } finally {
-    addingMember.value = false
+    newMemberName.value = name // 還原輸入內容方便重試
+    store.showToast(`新增失敗：${err.message}`, 'error', 4000)
   }
 }
 
@@ -213,9 +210,10 @@ async function demoteMember(member) {
   saving.value = new Set([...saving.value, member.id])
   try {
     await api.demoteMember(store.adminToken, member.id)
-    await store.init()
+    await store.refresh()
+    store.showToast(`${member.name} 已轉為臨時人員`, 'success')
   } catch (err) {
-    addError.value = `轉換失敗：${err.message}`
+    store.showToast(`轉換失敗：${err.message}`, 'error', 4000)
   } finally {
     const next = new Set(saving.value)
     next.delete(member.id)
@@ -228,9 +226,10 @@ async function promoteGuest(guest) {
   try {
     const result = await api.saveMember(store.adminToken, { name: guest.name, active: true })
     await api.promoteGuest(store.adminToken, guest.guest_key, result.id)
-    await store.init()
+    await store.refresh()
+    store.showToast(`${guest.name} 已升級為固定成員`, 'success')
   } catch (err) {
-    addError.value = `升級失敗：${err.message}`
+    store.showToast(`升級失敗：${err.message}`, 'error', 4000)
   } finally {
     const next = new Set(saving.value)
     next.delete(guest.guest_key)

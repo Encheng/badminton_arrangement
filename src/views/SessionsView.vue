@@ -50,6 +50,7 @@
               :is-future="!isCurrent(session)"
               :is-current="isCurrent(session)"
               :editable="store.isAdmin"
+              :pending="isTempId(session.session_id)"
               @edit="editSession"
               @delete="confirmDeleteSession"
               @copy="copySession"
@@ -127,6 +128,7 @@
               :key="session.session_id"
               :session="session"
               :editable="store.isAdmin"
+              :pending="isTempId(session.session_id)"
               :video-count="(store.videosByDate[session.date] || []).length"
               @edit="editSession"
               @delete="confirmDeleteSession"
@@ -225,15 +227,8 @@
 
             <div class="modal__actions">
               <button class="modal__cancel" @click="showAddModal = false">取消</button>
-              <button
-                class="modal__save"
-                :disabled="savingNew"
-                @click="handleAddSession"
-              >
-                {{ savingNew ? '儲存中…' : '儲存' }}
-              </button>
+              <button class="modal__save" @click="handleAddSession">儲存</button>
             </div>
-            <p v-if="addError" class="error-msg">{{ addError }}</p>
           </motion.div>
         </motion.div>
         </AnimatePresence>
@@ -294,16 +289,8 @@
 
             <div class="modal__actions">
               <button class="modal__cancel" @click="closeEditModal">取消</button>
-              <button
-                class="modal__save"
-                :disabled="savingEdit"
-                @click="handleEditSave"
-              >
-                {{ savingEdit ? '儲存中…' : '更新名單' }}
-              </button>
+              <button class="modal__save" @click="handleEditSave">更新名單</button>
             </div>
-            <p v-if="editError" class="error-msg">{{ editError }}</p>
-            <p v-if="editSuccess" class="success-msg">已成功更新！</p>
           </motion.div>
         </motion.div>
         </AnimatePresence>
@@ -340,15 +327,8 @@
             </p>
             <div class="modal__actions">
               <button class="modal__cancel" @click="cancelDelete">取消</button>
-              <button
-                class="modal__delete"
-                :disabled="deleting"
-                @click="handleDeleteSession"
-              >
-                {{ deleting ? '刪除中…' : '確認刪除' }}
-              </button>
+              <button class="modal__delete" @click="handleDeleteSession">確認刪除</button>
             </div>
-            <p v-if="deleteError" class="error-msg">{{ deleteError }}</p>
           </motion.div>
         </motion.div>
         </AnimatePresence>
@@ -368,10 +348,9 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { motion, AnimatePresence } from 'motion-v'
 import { ClipboardList, Plus, CalendarSearch } from 'lucide-vue-next'
-import { useAppStore } from '../stores/app.js'
+import { useAppStore, isTempId } from '../stores/app.js'
 import { getTodayStr, getComingSaturday, getNextSaturdayAfter } from '../utils/date.js'
 import { getCurrentStreak } from '../utils/stats.js'
-import { api } from '../services/api.js'
 import SessionCard from '../components/SessionCard.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
 import MemberCheckItem from '../components/MemberCheckItem.vue'
@@ -530,9 +509,6 @@ const showEditModal   = ref(false)
 const editingSession  = ref(null)
 const editCheckedIds  = ref(new Set())
 const editGuests      = ref([])
-const savingEdit      = ref(false)
-const editError       = ref('')
-const editSuccess     = ref(false)
 
 const editDateLabel = computed(() =>
   editingSession.value ? formatDateLabel(editingSession.value.date) : ''
@@ -546,8 +522,6 @@ function editSession(session) {
   editGuests.value = session.attendances
     .filter(a => a.type === 'guest')
     .map(a => ({ name: a.name, guest_key: a.guest_key }))
-  editError.value   = ''
-  editSuccess.value = false
   showEditModal.value = true
 }
 
@@ -575,26 +549,21 @@ function removeEditGuest(key) {
 }
 
 async function handleEditSave() {
-  savingEdit.value  = true
-  editError.value   = ''
-  editSuccess.value = false
+  const date = editingSession.value.date
+  const attendances = [
+    ...store.activeMembers
+      .filter(m => editCheckedIds.value.has(m.id))
+      .map(m => ({ member_id: m.id, name: m.name, type: 'member', guest_key: null })),
+    ...editGuests.value.map(g => ({
+      member_id: null, name: g.name, type: 'guest', guest_key: g.guest_key,
+    })),
+  ]
+  closeEditModal() // 樂觀更新：立即關閉，背景同步
   try {
-    const attendances = [
-      ...store.activeMembers
-        .filter(m => editCheckedIds.value.has(m.id))
-        .map(m => ({ member_id: m.id, name: m.name, type: 'member', guest_key: null })),
-      ...editGuests.value.map(g => ({
-        member_id: null, name: g.name, type: 'guest', guest_key: g.guest_key,
-      })),
-    ]
-    await api.saveSession(store.adminToken, editingSession.value.date, attendances)
-    await store.init()
-    editSuccess.value = true
-    setTimeout(() => { closeEditModal() }, 600)
+    await store.saveSessionOptimistic(date, attendances)
+    store.showToast('名單已更新', 'success')
   } catch (err) {
-    editError.value = `儲存失敗：${err.message}`
-  } finally {
-    savingEdit.value = false
+    store.showToast(`儲存失敗，已還原：${err.message}`, 'error', 4000)
   }
 }
 
@@ -608,8 +577,6 @@ watch(() => store.loading, (isLoading) => {
 
 // --- 刪除場次 ---
 const deleteTarget = ref(null)
-const deleting     = ref(false)
-const deleteError  = ref('')
 
 const deleteTargetLabel = computed(() => {
   if (!deleteTarget.value) return ''
@@ -617,26 +584,25 @@ const deleteTargetLabel = computed(() => {
 })
 
 function confirmDeleteSession(session) {
+  if (isTempId(session.session_id)) {
+    store.showToast('場次同步中，請稍候再試', 'info')
+    return
+  }
   deleteTarget.value = session
-  deleteError.value  = ''
 }
 
 function cancelDelete() {
   deleteTarget.value = null
-  deleteError.value  = ''
 }
 
 async function handleDeleteSession() {
-  deleting.value    = true
-  deleteError.value = ''
+  const target = deleteTarget.value
+  deleteTarget.value = null // 樂觀更新：立即關閉確認視窗
   try {
-    await api.deleteSession(store.adminToken, deleteTarget.value.session_id)
-    deleteTarget.value = null
-    await store.init()
+    await store.deleteSessionOptimistic(target.session_id)
+    store.showToast('場次已刪除', 'success')
   } catch (err) {
-    deleteError.value = `刪除失敗：${err.message}`
-  } finally {
-    deleting.value = false
+    store.showToast(`刪除失敗，已還原：${err.message}`, 'error', 4000)
   }
 }
 
@@ -656,7 +622,6 @@ function copySession(session) {
   // 自動計算下一個場次日期
   newSessionDate.value = calcNextSessionDate()
 
-  addError.value = ''
   showAddModal.value = true
 }
 
@@ -674,8 +639,6 @@ const selectedSessionVideos = computed(() =>
 
 // --- 新增場次 modal ---
 const showAddModal = ref(false)
-const savingNew    = ref(false)
-const addError     = ref('')
 const newGuests    = ref([])
 
 function calcNextSessionDate() {
@@ -708,27 +671,26 @@ function removeNewGuest(key) {
 }
 
 async function handleAddSession() {
-  savingNew.value = true
-  addError.value  = ''
+  const date = newSessionDate.value
+  const attendances = [
+    ...store.activeMembers
+      .filter(m => newCheckedIds.value.has(m.id))
+      .map(m => ({ member_id: m.id, name: m.name, type: 'member', guest_key: null })),
+    ...newGuests.value.map(g => ({
+      member_id: null, name: g.name, type: 'guest', guest_key: g.guest_key,
+    })),
+  ]
+  // 樂觀更新：立即關閉並重置表單，背景同步
+  showAddModal.value  = false
+  newCheckedIds.value = new Set()
+  newGuests.value     = []
   try {
-    const attendances = [
-      ...store.activeMembers
-        .filter(m => newCheckedIds.value.has(m.id))
-        .map(m => ({ member_id: m.id, name: m.name, type: 'member', guest_key: null })),
-      ...newGuests.value.map(g => ({
-        member_id: null, name: g.name, type: 'guest', guest_key: g.guest_key,
-      })),
-    ]
-    await api.saveSession(store.adminToken, newSessionDate.value, attendances)
-    await store.init()
-    showAddModal.value   = false
-    newCheckedIds.value  = new Set()
-    newGuests.value      = []
-    newSessionDate.value = calcNextSessionDate()
+    await store.saveSessionOptimistic(date, attendances)
+    store.showToast('場次已新增', 'success')
   } catch (err) {
-    addError.value = `儲存失敗：${err.message}`
+    store.showToast(`新增失敗，已還原：${err.message}`, 'error', 4000)
   } finally {
-    savingNew.value = false
+    newSessionDate.value = calcNextSessionDate()
   }
 }
 </script>

@@ -15,6 +15,7 @@
       </time>
       <span v-if="isCurrent" class="card__badge card__badge--current">本週</span>
       <span v-else-if="isFuture" class="card__badge card__badge--future">預定</span>
+      <span v-if="pending" class="card__badge card__badge--pending">同步中…</span>
     </div>
     <p class="card__names">{{ nameList || '尚未安排人員' }}</p>
     <div class="card__footer">
@@ -47,6 +48,8 @@
         <button
           class="card__delete-btn"
           aria-label="刪除此場次"
+          :disabled="pending"
+          :title="pending ? '同步中，請稍候' : undefined"
           @click="$emit('delete', session)"
         >
           刪除
@@ -67,6 +70,7 @@ const props = defineProps({
   isFuture:   { type: Boolean, default: false },
   isCurrent:  { type: Boolean, default: false },
   editable:   { type: Boolean, default: false },
+  pending:    { type: Boolean, default: false },
   videoCount: { type: Number,  default: 0 },
 })
 
@@ -137,6 +141,14 @@ const nameList = computed(() =>
 .card__badge--future {
   background: var(--secondary);
   color: var(--on-secondary);
+}
+.card__badge--pending {
+  background: rgba(98, 0, 238, 0.08);
+  color: var(--primary);
+  animation: badge-pulse 1.2s ease-in-out infinite;
+}
+@keyframes badge-pulse {
+  50% { opacity: 0.45; }
 }
 
 .card__names {
@@ -212,9 +224,13 @@ const nameList = computed(() =>
   touch-action: manipulation;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.card__delete-btn:active {
+.card__delete-btn:active:not(:disabled) {
   background: var(--error, #cf6679);
   color: #fff;
+}
+.card__delete-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 @media (hover: hover) {
   .card__copy-btn:hover {
@@ -225,7 +241,7 @@ const nameList = computed(() =>
     background: var(--primary);
     color: var(--on-primary);
   }
-  .card__delete-btn:hover {
+  .card__delete-btn:hover:not(:disabled) {
     background: var(--error, #cf6679);
     color: #fff;
   }
