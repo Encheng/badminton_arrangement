@@ -79,8 +79,21 @@
             :key="att.id"
             :name="att.name"
             :delay="i * 0.05"
+            @longpress="openAttendeeSheet(att)"
           />
         </div>
+        <AttendeeInfoSheet
+          v-model:show="attendeeSheetOpen"
+          :name="selectedAttendee?.name || ''"
+          :last-session="selectedLastSession"
+          :video-count="selectedLastVideos.length"
+          @view-videos="openLastSessionVideos"
+        />
+        <VideoListModal
+          v-model:show="videoModalOpen"
+          :session-date="selectedLastSession?.date || ''"
+          :videos="selectedLastVideos"
+        />
       </template>
 
     </motion.main>
@@ -104,13 +117,17 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { motion } from 'motion-v'
 import { MapPin, CalendarOff, Pencil } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
-import { getTodayStr } from '../utils/date.js'
+import { getTodayStr, daysBetween } from '../utils/date.js'
+import { getLastAttendance } from '../utils/stats.js'
+import { trackAttendeeSheetOpened, trackAttendeeSheetVideoClick } from '../utils/analytics.js'
 import AttendeeChip from '../components/AttendeeChip.vue'
+import AttendeeInfoSheet from '../components/AttendeeInfoSheet.vue'
+import VideoListModal from '../components/VideoListModal.vue'
 import SkeletonBlock from '../components/SkeletonBlock.vue'
 import PullRefresh from '../components/PullRefresh.vue'
 
@@ -164,6 +181,42 @@ const lastUpdatedLabel = computed(() => {
   const d = new Date(currentSession.value.created_at)
   return `由管理員更新於 ${d.getMonth() + 1}/${d.getDate()}`
 })
+
+// --- 成員資訊彈窗 ---
+const attendeeSheetOpen = ref(false)
+const videoModalOpen = ref(false)
+const selectedAttendee = ref(null)
+
+const selectedLastSession = computed(() => {
+  if (!selectedAttendee.value || !currentSession.value) return null
+  return getLastAttendance(store.sessions, selectedAttendee.value.name, currentSession.value.date)
+})
+
+const selectedLastVideos = computed(() =>
+  selectedLastSession.value
+    ? (store.videosByDate[selectedLastSession.value.date] || [])
+    : []
+)
+
+function openAttendeeSheet(att) {
+  selectedAttendee.value = att
+  attendeeSheetOpen.value = true
+  const last = selectedLastSession.value
+  trackAttendeeSheetOpened({
+    daysSince: last ? daysBetween(last.date, getTodayStr()) : null,
+    hasVideo: selectedLastVideos.value.length > 0,
+    hasHistory: !!last,
+  })
+}
+
+function openLastSessionVideos() {
+  trackAttendeeSheetVideoClick({
+    sessionDate: selectedLastSession.value.date,
+    videoCount: selectedLastVideos.value.length,
+  })
+  attendeeSheetOpen.value = false
+  videoModalOpen.value = true
+}
 </script>
 
 <style scoped>
