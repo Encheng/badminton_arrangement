@@ -142,6 +142,7 @@ const props = defineProps({
   heading:     { type: String,  default: '' },      // 有值時覆蓋列表標題（成員模式傳成員名）
   showItemDate:{ type: Boolean, default: false },   // true 時每個清單項目顯示場次日期（跨場次用）
   source:      { type: String,  default: 'session' }, // 分析來源：'session' | 'member_sheet'
+  startIndex:  { type: Number, default: null },
 })
 
 const emit = defineEmits(['update:show'])
@@ -248,6 +249,10 @@ watch(() => props.show, (isOpen) => {
       videoCount: props.videos.length,
       source: props.source,
     })
+
+    if (props.startIndex !== null && props.startIndex >= 0 && props.startIndex < props.videos.length) {
+      activeVideoIndex.value = props.startIndex
+    }
   } else {
     document.body.style.overflow = ''
 
