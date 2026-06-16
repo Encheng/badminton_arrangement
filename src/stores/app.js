@@ -2,6 +2,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '../services/api.js'
+import { parseVideoPlayers } from '../utils/videos.js'
 
 /** 樂觀更新產生、尚未經伺服器確認的暫時 id */
 export function isTempId(id) {
@@ -57,6 +58,13 @@ export const useAppStore = defineStore('app', () => {
       (map[v.session_date] ||= []).push(v)
     }
     return map
+  })
+
+  const videosByMember = computed(() => (memberName) => {
+    if (!memberName) return []
+    return videos.value
+      .filter(v => parseVideoPlayers(v.title).includes(memberName))
+      .sort((a, b) => b.session_date.localeCompare(a.session_date))
   })
 
   function setAdminToken(token) {
@@ -319,5 +327,5 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  return { config, members, sessions, videos, loading, toast, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, setAdminToken, clearAdminToken, init, refresh, showToast, saveSessionOptimistic, deleteSessionOptimistic, toggleMemberActiveOptimistic, addMemberOptimistic }
+  return { config, members, sessions, videos, loading, toast, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, videosByMember, setAdminToken, clearAdminToken, init, refresh, showToast, saveSessionOptimistic, deleteSessionOptimistic, toggleMemberActiveOptimistic, addMemberOptimistic }
 })

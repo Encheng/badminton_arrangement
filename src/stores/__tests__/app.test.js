@@ -79,4 +79,32 @@ describe('useAppStore', () => {
     await store.init()
     expect(store.videos).toEqual([])
   })
+
+  it('videosByMember returns videos containing the member, newest session first', () => {
+    const store = useAppStore()
+    store.videos = [
+      { video_id: 'a', session_date: '2026-04-05', match_no: 1, title: '20260405 Peter Sandy 1' },
+      { video_id: 'b', session_date: '2026-04-12', match_no: 2, title: '20260412 Timo Peter 2' },
+      { video_id: 'c', session_date: '2026-04-12', match_no: 1, title: '20260412 Ruby Sandy 1' },
+    ]
+    const result = store.videosByMember('Peter')
+    expect(result.map(v => v.video_id)).toEqual(['b', 'a'])
+  })
+
+  it('videosByMember matches whole tokens only, not substrings', () => {
+    const store = useAppStore()
+    store.videos = [
+      { video_id: 'a', session_date: '2026-04-05', match_no: 1, title: '20260405 Fang Peter 1' },
+      { video_id: 'b', session_date: '2026-04-12', match_no: 1, title: '20260412 Fangirl Sandy 1' },
+    ]
+    expect(store.videosByMember('Fang').map(v => v.video_id)).toEqual(['a'])
+  })
+
+  it('videosByMember returns [] when member has no videos', () => {
+    const store = useAppStore()
+    store.videos = [
+      { video_id: 'a', session_date: '2026-04-05', match_no: 1, title: '20260405 Peter Sandy 1' },
+    ]
+    expect(store.videosByMember('Nobody')).toEqual([])
+  })
 })
