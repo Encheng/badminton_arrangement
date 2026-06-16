@@ -44,19 +44,51 @@
           <div class="modal__body">
             <AttendanceHeatmap v-if="memberId" :member-id="memberId" />
             <BadgeGrid v-if="memberId" :member-id="memberId" />
+
+            <section v-if="memberVideos.length" class="member-videos">
+              <h3 class="member-videos__title">比賽影片 ({{ memberVideos.length }})</h3>
+              <ul class="member-videos__list">
+                <li
+                  v-for="(v, index) in memberVideos"
+                  :key="v.video_id"
+                  class="member-videos__item"
+                >
+                  <button class="member-videos__btn" @click="openVideos(index)">
+                    <img
+                      :src="`https://i.ytimg.com/vi/${v.video_id}/mqdefault.jpg`"
+                      :alt="`播放第 ${v.match_no} 局影片`"
+                      class="member-videos__thumb"
+                      loading="lazy"
+                      @error="e => e.target.style.visibility = 'hidden'"
+                    >
+                  </button>
+                </li>
+              </ul>
+            </section>
           </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>
   </Teleport>
+
+  <VideoListModal
+    v-model:show="showVideoModal"
+    :videos="memberVideos"
+    :heading="`${memberName} 的比賽`"
+    :show-item-date="true"
+    source="member_sheet"
+    :start-index="videoStartIndex"
+  />
 </template>
 
 <script setup>
-import { watch, ref } from 'vue'
+import { watch, ref, computed } from 'vue'
 import { motion, AnimatePresence } from 'motion-v'
 import { X } from 'lucide-vue-next'
 import BadgeGrid from './BadgeGrid.vue'
 import AttendanceHeatmap from './AttendanceHeatmap.vue'
+import { useAppStore } from '../stores/app.js'
+import VideoListModal from './VideoListModal.vue'
 
 const props = defineProps({
   show:       { type: Boolean, default: false },
@@ -66,9 +98,30 @@ const props = defineProps({
 
 const emit = defineEmits(['update:show'])
 
+const store = useAppStore()
+
+const memberVideos = computed(() =>
+  props.memberName ? store.videosByMember(props.memberName) : []
+)
+
+const showVideoModal = ref(false)
+const videoStartIndex = ref(0)
+
+function openVideos(index) {
+  videoStartIndex.value = index
+  showVideoModal.value = true
+}
+
 // Scroll lock
 watch(() => props.show, (isOpen) => {
   document.body.style.overflow = isOpen ? 'hidden' : ''
+})
+
+// 影片播放器關閉時，若成員 sheet 仍開著，重新鎖定背景捲動
+watch(showVideoModal, (isVideoOpen) => {
+  if (!isVideoOpen && props.show) {
+    document.body.style.overflow = 'hidden'
+  }
 })
 
 // Swipe down to close
@@ -153,5 +206,25 @@ function handleTouchEnd() {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+}
+.member-videos { margin-top: 16px; }
+.member-videos__title {
+  font-size: 14px; font-weight: 700; color: var(--text-primary);
+  margin: 0 0 10px;
+}
+.member-videos__list {
+  display: flex; gap: 10px; overflow-x: auto;
+  list-style: none; margin: 0; padding: 0 0 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.member-videos__item { flex: 0 0 auto; }
+.member-videos__btn {
+  border: none; padding: 0; background: none; cursor: pointer;
+  border-radius: 8px; overflow: hidden; display: block;
+  touch-action: manipulation;
+}
+.member-videos__thumb {
+  width: 120px; height: 67px; object-fit: cover; display: block;
+  border-radius: 8px;
 }
 </style>
