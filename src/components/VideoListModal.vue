@@ -131,6 +131,7 @@ import {
   trackVideoPlayerBack,
   trackVideoModalClose,
 } from '../utils/analytics'
+import { parseVideoPlayers } from '../utils/videos.js'
 
 const props = defineProps({
   show:        { type: Boolean, default: false },
@@ -309,7 +310,7 @@ const formattedDate = computed(() => {
 })
 
 function extractNames(title) {
-  return title.replace(/^\d{8}\s/, '').replace(/\s\d+$/, '')
+  return parseVideoPlayers(title).join(' ')
 }
 
 function onThumbError(e) {
