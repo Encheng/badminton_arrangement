@@ -107,4 +107,22 @@ describe('useAppStore', () => {
     ]
     expect(store.videosByMember('Nobody')).toEqual([])
   })
+
+  it('videosByMember matches case-insensitively (member name registered in different case than title)', () => {
+    const store = useAppStore()
+    store.videos = [
+      { video_id: 'a', session_date: '2026-04-05', match_no: 1, title: '20260405 Sandy Timo 1' },
+    ]
+    // member registered as lowercase 'sandy' must still match title token 'Sandy'
+    expect(store.videosByMember('sandy').map(v => v.video_id)).toEqual(['a'])
+    expect(store.videosByMember('timo').map(v => v.video_id)).toEqual(['a'])
+  })
+
+  it('videosByMember trims surrounding whitespace in member name before matching', () => {
+    const store = useAppStore()
+    store.videos = [
+      { video_id: 'a', session_date: '2026-04-05', match_no: 1, title: '20260405 Peter Sandy 1' },
+    ]
+    expect(store.videosByMember('  Peter ').map(v => v.video_id)).toEqual(['a'])
+  })
 })

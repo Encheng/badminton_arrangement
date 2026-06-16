@@ -61,9 +61,11 @@ export const useAppStore = defineStore('app', () => {
   })
 
   const videosByMember = computed(() => (memberName) => {
-    if (!memberName) return []
+    // 比對忽略大小寫與前後空白：成員登記名與影片標題的英文大小寫常不一致
+    const target = (memberName || '').trim().toLowerCase()
+    if (!target) return []
     return videos.value
-      .filter(v => parseVideoPlayers(v.title).includes(memberName))
+      .filter(v => parseVideoPlayers(v.title).some(p => p.toLowerCase() === target))
       .sort((a, b) => b.session_date.localeCompare(a.session_date))
   })
 
