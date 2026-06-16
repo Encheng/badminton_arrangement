@@ -46,24 +46,32 @@
             <BadgeGrid v-if="memberId" :member-id="memberId" />
 
             <section v-if="memberVideos.length" class="member-videos">
-              <h3 class="member-videos__title">比賽影片 ({{ memberVideos.length }})</h3>
-              <ul class="member-videos__list">
-                <li
-                  v-for="(v, index) in memberVideos"
-                  :key="v.video_id"
-                  class="member-videos__item"
-                >
-                  <button class="member-videos__btn" @click="openVideos(index)">
-                    <img
-                      :src="`https://i.ytimg.com/vi/${v.video_id}/mqdefault.jpg`"
-                      :alt="`播放第 ${v.match_no} 局影片`"
-                      class="member-videos__thumb"
-                      loading="lazy"
-                      @error="e => e.target.style.visibility = 'hidden'"
-                    >
-                  </button>
-                </li>
-              </ul>
+              <h3 class="member-videos__title">比賽影片</h3>
+              <button
+                class="video-card"
+                :aria-label="`查看 ${memberName} 的 ${memberVideos.length} 場比賽影片`"
+                @click="openVideoList"
+              >
+                <span class="video-card__thumb">
+                  <img
+                    :src="`https://i.ytimg.com/vi/${recentVideo.video_id}/mqdefault.jpg`"
+                    alt=""
+                    class="video-card__img"
+                    loading="lazy"
+                    @error="e => e.target.style.visibility = 'hidden'"
+                  >
+                  <span class="video-card__play" aria-hidden="true">
+                    <Play :size="16" :stroke-width="0" fill="currentColor" />
+                  </span>
+                </span>
+                <span class="video-card__text">
+                  <span class="video-card__count">共 {{ memberVideos.length }} 場比賽影片</span>
+                  <span class="video-card__recent">
+                    最近 {{ formatShortDate(recentVideo.session_date) }}・第 {{ recentVideo.match_no }} 局
+                  </span>
+                </span>
+                <ChevronRight class="video-card__chevron" :size="20" :stroke-width="2" />
+              </button>
             </section>
           </div>
         </motion.div>
@@ -77,14 +85,13 @@
     :heading="`${memberName} 的比賽`"
     :show-item-date="true"
     source="member_sheet"
-    :start-index="videoStartIndex"
   />
 </template>
 
 <script setup>
 import { watch, ref, computed } from 'vue'
 import { motion, AnimatePresence } from 'motion-v'
-import { X } from 'lucide-vue-next'
+import { X, Play, ChevronRight } from 'lucide-vue-next'
 import BadgeGrid from './BadgeGrid.vue'
 import AttendanceHeatmap from './AttendanceHeatmap.vue'
 import { useAppStore } from '../stores/app.js'
@@ -105,10 +112,17 @@ const memberVideos = computed(() =>
 )
 
 const showVideoModal = ref(false)
-const videoStartIndex = ref(0)
 
-function openVideos(index) {
-  videoStartIndex.value = index
+// 最近一場（memberVideos 已依日期新到舊排序）
+const recentVideo = computed(() => memberVideos.value[0] || null)
+
+function formatShortDate(dateStr) {
+  if (!dateStr) return ''
+  const [, m, d] = dateStr.split('-')
+  return `${Number(m)}/${Number(d)}`
+}
+
+function openVideoList() {
   showVideoModal.value = true
 }
 
@@ -212,19 +226,47 @@ function handleTouchEnd() {
   font-size: 14px; font-weight: 700; color: var(--text-primary);
   margin: 0 0 10px;
 }
-.member-videos__list {
-  display: flex; gap: 10px; overflow-x: auto;
-  list-style: none; margin: 0; padding: 0 0 4px;
-  -webkit-overflow-scrolling: touch;
-}
-.member-videos__item { flex: 0 0 auto; }
-.member-videos__btn {
-  border: none; padding: 0; background: none; cursor: pointer;
-  border-radius: 8px; overflow: hidden; display: block;
+.video-card {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 10px; margin: 0;
+  background: var(--surface-variant, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer; text-align: left;
   touch-action: manipulation;
 }
-.member-videos__thumb {
-  width: 120px; height: 67px; object-fit: cover; display: block;
-  border-radius: 8px;
+.video-card:active { background: var(--border); }
+.video-card__thumb {
+  position: relative; flex: 0 0 auto;
+  width: 96px; height: 54px;
+  border-radius: 8px; overflow: hidden;
+  background: var(--border);
+}
+.video-card__img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.video-card__play {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+}
+.video-card__play::before {
+  content: ''; position: absolute;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+}
+.video-card__play :deep(svg) { position: relative; }
+.video-card__text {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.video-card__count {
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
+}
+.video-card__recent {
+  font-size: 12px; color: var(--text-tertiary);
+}
+.video-card__chevron {
+  flex: 0 0 auto; color: var(--text-tertiary);
 }
 </style>
