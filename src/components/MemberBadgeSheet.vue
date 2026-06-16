@@ -56,9 +56,10 @@
                   <button class="member-videos__btn" @click="openVideos(index)">
                     <img
                       :src="`https://i.ytimg.com/vi/${v.video_id}/mqdefault.jpg`"
-                      :alt="`第 ${v.match_no} 局縮圖`"
+                      :alt="`播放第 ${v.match_no} 局影片`"
                       class="member-videos__thumb"
                       loading="lazy"
+                      @error="e => e.target.style.visibility = 'hidden'"
                     >
                   </button>
                 </li>
@@ -114,6 +115,13 @@ function openVideos(index) {
 // Scroll lock
 watch(() => props.show, (isOpen) => {
   document.body.style.overflow = isOpen ? 'hidden' : ''
+})
+
+// 影片播放器關閉時，若成員 sheet 仍開著，重新鎖定背景捲動
+watch(showVideoModal, (isVideoOpen) => {
+  if (!isVideoOpen && props.show) {
+    document.body.style.overflow = 'hidden'
+  }
 })
 
 // Swipe down to close
