@@ -48,10 +48,11 @@ export function trackVideoButtonClick({ sessionDate, videoCount, source }) {
 /**
  * 追蹤：影片列表成功展開
  */
-export function trackVideoListOpened({ sessionDate, videoCount }) {
+export function trackVideoListOpened({ sessionDate, videoCount, source }) {
   trackVideoEvent('video_list_opened', {
     session_date: sessionDate,
     video_count: videoCount,
+    source,
   })
 }
 

@@ -37,7 +37,7 @@
               </button>
               <h2 class="modal__title">第 {{ activeVideo.match_no }} 局</h2>
             </template>
-            <h2 v-else class="modal__title">{{ formattedDate }} 的影片</h2>
+            <h2 v-else class="modal__title">{{ heading || `${formattedDate} 的影片` }}</h2>
             <button
               class="modal__close"
               aria-label="關閉"
@@ -71,7 +71,9 @@
                     </div>
                   </div>
                   <div class="video-item__body">
-                    <p class="video-item__match">第 {{ v.match_no }} 局</p>
+                    <p class="video-item__match">
+                      <span v-if="showItemDate">{{ formatItemDate(v.session_date) }}　</span>第 {{ v.match_no }} 局
+                    </p>
                     <p class="video-item__names">{{ extractNames(v.title) }}</p>
                   </div>
                 </a>
@@ -137,6 +139,9 @@ const props = defineProps({
   show:        { type: Boolean, default: false },
   sessionDate: { type: String,  default: '' },
   videos:      { type: Array,   default: () => [] },
+  heading:     { type: String,  default: '' },      // 有值時覆蓋列表標題（成員模式傳成員名）
+  showItemDate:{ type: Boolean, default: false },   // true 時每個清單項目顯示場次日期（跨場次用）
+  source:      { type: String,  default: 'session' }, // 分析來源：'session' | 'member_sheet'
 })
 
 const emit = defineEmits(['update:show'])
@@ -241,6 +246,7 @@ watch(() => props.show, (isOpen) => {
     trackVideoListOpened({
       sessionDate: props.sessionDate,
       videoCount: props.videos.length,
+      source: props.source,
     })
   } else {
     document.body.style.overflow = ''
@@ -308,6 +314,14 @@ const formattedDate = computed(() => {
     year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short',
   }).format(d)
 })
+
+function formatItemDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr + 'T00:00:00')
+  return new Intl.DateTimeFormat('zh-TW', {
+    month: 'numeric', day: 'numeric', weekday: 'short',
+  }).format(d)
+}
 
 function extractNames(title) {
   return parseVideoPlayers(title).join(' ')
