@@ -37,8 +37,8 @@
           <p v-if="a.body" class="ann__body">{{ a.body }}</p>
           <p v-if="a.expires_at" class="ann__expiry">有效至 {{ a.expires_at }}</p>
           <a
-            v-if="a.link_url"
-            :href="a.link_url"
+            v-if="safeLink(a.link_url)"
+            :href="safeLink(a.link_url)"
             target="_blank"
             rel="noopener noreferrer"
             class="ann__link"
@@ -92,6 +92,11 @@ function add() {
 function edit(a) {
   editing.value = { ...a }
   sheetOpen.value = true
+}
+
+function safeLink(url) {
+  if (!url) return null
+  return /^(https?:\/\/|\/)/i.test(url.trim()) ? url : null
 }
 
 async function remove(a) {

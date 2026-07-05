@@ -85,10 +85,17 @@ export const useAppStore = defineStore('app', () => {
 
   const latestAnnouncement = computed(() => activeAnnouncements.value[0] ?? null)
 
+  const newestActiveCreatedAt = computed(() =>
+    activeAnnouncements.value.reduce((max, a) => {
+      const c = a.created_at || ''
+      return c > max ? c : max
+    }, '')
+  )
+
   const hasUnreadAnnouncements = computed(() => {
-    const latest = latestAnnouncement.value
-    if (!latest) return false
-    return (latest.created_at || '') > _annSeenAt.value
+    const newest = newestActiveCreatedAt.value
+    if (!newest) return false
+    return newest > _annSeenAt.value
   })
 
   function setAdminToken(token) {
@@ -102,9 +109,9 @@ export const useAppStore = defineStore('app', () => {
   }
 
   function markAnnouncementsSeen() {
-    const latest = latestAnnouncement.value
-    if (!latest) return
-    _annSeenAt.value = latest.created_at || ''
+    const newest = newestActiveCreatedAt.value
+    if (!newest) return
+    _annSeenAt.value = newest
     localStorage.setItem(ANN_SEEN_KEY, _annSeenAt.value)
   }
 
@@ -380,6 +387,7 @@ export const useAppStore = defineStore('app', () => {
     _saveCache() // write-through
     try {
       await api.saveAnnouncement(_token.value, ann)
+      if (!ann.id) markAnnouncementsSeen()
       _reconcile()
     } catch (err) {
       if (_pageUnloading) return

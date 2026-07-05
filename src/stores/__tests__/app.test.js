@@ -1,5 +1,5 @@
 // src/stores/__tests__/app.test.js
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAppStore } from '../app.js'
 import { api } from '../../services/api.js'
@@ -194,6 +194,22 @@ describe('unread announcements', () => {
     await store.init()
     expect(store.hasUnreadAnnouncements).toBe(false)
   })
+
+  it('unread is true for a newer non-pinned announcement even when an older pinned one is on top', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'p1', title: 'pinned old', body: '', link_url: '', link_label: '', pinned: true,  expires_at: '', created_at: '2026-07-01T00:00:00Z' },
+      { id: 'n1', title: 'new notice', body: '', link_url: '', link_label: '', pinned: false, expires_at: '', created_at: '2026-07-04T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+    // latest headline is the pinned (older) one
+    expect(store.latestAnnouncement.id).toBe('p1')
+    // but the unread dot must still be raised by the newer non-pinned one
+    expect(store.hasUnreadAnnouncements).toBe(true)
+    store.markAnnouncementsSeen()
+    expect(store.hasUnreadAnnouncements).toBe(false)
+    expect(localStorage.getItem('badminton_ann_seen_v1')).toBe('2026-07-04T00:00:00Z')
+  })
 })
 
 describe('announcement optimistic actions', () => {
@@ -225,6 +241,14 @@ describe('announcement optimistic actions', () => {
     ).rejects.toThrow('boom')
 
     expect(store.announcements.some(a => a.title === 'X')).toBe(false)
+  })
+
+  it('does not flag unread for the author after creating', async () => {
+    const store = useAppStore()
+    store.setAdminToken('secret')
+    api.saveAnnouncement.mockResolvedValueOnce({ id: 'an999' })
+    await store.saveAnnouncementOptimistic({ title: 'Mine', body: '', link_url: '', link_label: '', pinned: false, expires_at: '' })
+    expect(store.hasUnreadAnnouncements).toBe(false)
   })
 
   it('deletes optimistically and rolls back on failure', async () => {
