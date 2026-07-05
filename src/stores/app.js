@@ -19,6 +19,8 @@ export const useAppStore = defineStore('app', () => {
   const sessions = ref([])
   const videos   = ref([])
   const announcements = ref([])
+  const ANN_SEEN_KEY = 'badminton_ann_seen_v1'
+  const _annSeenAt = ref(localStorage.getItem(ANN_SEEN_KEY) || '')
   const loading  = ref(true)
   const toast    = ref(null) // { id, message, type: 'success' | 'error' | 'info' }
   const _token   = ref(localStorage.getItem('admin_token') || null)
@@ -83,6 +85,12 @@ export const useAppStore = defineStore('app', () => {
 
   const latestAnnouncement = computed(() => activeAnnouncements.value[0] ?? null)
 
+  const hasUnreadAnnouncements = computed(() => {
+    const latest = latestAnnouncement.value
+    if (!latest) return false
+    return (latest.created_at || '') > _annSeenAt.value
+  })
+
   function setAdminToken(token) {
     _token.value = token
     if (token) localStorage.setItem('admin_token', token)
@@ -91,6 +99,13 @@ export const useAppStore = defineStore('app', () => {
   function clearAdminToken() {
     _token.value = null
     localStorage.removeItem('admin_token')
+  }
+
+  function markAnnouncementsSeen() {
+    const latest = latestAnnouncement.value
+    if (!latest) return
+    _annSeenAt.value = latest.created_at || ''
+    localStorage.setItem(ANN_SEEN_KEY, _annSeenAt.value)
   }
 
   // Google Sheets 可能回傳非標準日期/時間格式，前端統一正規化
@@ -350,5 +365,5 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  return { config, members, sessions, videos, announcements, loading, toast, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, videosByMember, activeAnnouncements, latestAnnouncement, setAdminToken, clearAdminToken, init, refresh, showToast, saveSessionOptimistic, deleteSessionOptimistic, toggleMemberActiveOptimistic, addMemberOptimistic }
+  return { config, members, sessions, videos, announcements, loading, toast, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, videosByMember, activeAnnouncements, latestAnnouncement, hasUnreadAnnouncements, markAnnouncementsSeen, setAdminToken, clearAdminToken, init, refresh, showToast, saveSessionOptimistic, deleteSessionOptimistic, toggleMemberActiveOptimistic, addMemberOptimistic }
 })

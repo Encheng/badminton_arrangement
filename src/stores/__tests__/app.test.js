@@ -164,3 +164,34 @@ describe('activeAnnouncements', () => {
     expect(store.latestAnnouncement).toBeNull()
   })
 })
+
+describe('unread announcements', () => {
+  beforeEach(() => { localStorage.clear() })
+
+  it('hasUnreadAnnouncements is true when latest newer than seen', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'a1', title: 'x', body: '', link_url: '', link_label: '', pinned: false, expires_at: '', created_at: '2026-07-03T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+    expect(store.hasUnreadAnnouncements).toBe(true)
+  })
+
+  it('markAnnouncementsSeen clears unread and persists', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'a1', title: 'x', body: '', link_url: '', link_label: '', pinned: false, expires_at: '', created_at: '2026-07-03T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+    store.markAnnouncementsSeen()
+    expect(store.hasUnreadAnnouncements).toBe(false)
+    expect(localStorage.getItem('badminton_ann_seen_v1')).toBe('2026-07-03T00:00:00Z')
+  })
+
+  it('hasUnreadAnnouncements is false when no active announcements', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([])
+    const store = useAppStore()
+    await store.init()
+    expect(store.hasUnreadAnnouncements).toBe(false)
+  })
+})
