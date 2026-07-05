@@ -21,6 +21,8 @@
       </div>
     </motion.header>
 
+    <AnnouncementBanner />
+
     <!-- Sheet -->
     <motion.main
       class="sheet"
@@ -125,6 +127,7 @@ import { useAppStore } from '../stores/app.js'
 import { getTodayStr, daysBetween } from '../utils/date.js'
 import { getLastAttendance } from '../utils/stats.js'
 import { trackAttendeeSheetOpened, trackAttendeeSheetVideoClick } from '../utils/analytics.js'
+import AnnouncementBanner from '../components/AnnouncementBanner.vue'
 import AttendeeChip from '../components/AttendeeChip.vue'
 import AttendeeInfoSheet from '../components/AttendeeInfoSheet.vue'
 import VideoListModal from '../components/VideoListModal.vue'
