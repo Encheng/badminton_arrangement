@@ -74,3 +74,59 @@ describe('api.getVideos', () => {
     expect(result).toEqual(mockData)
   })
 })
+
+describe('api.getAnnouncements', () => {
+  it('calls GET with action=getAnnouncements and returns data', async () => {
+    const mockData = [{ id: 'a1', title: 'x', pinned: false, expires_at: '', created_at: '2026-07-01T00:00:00Z' }]
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: 'ok', data: mockData }),
+    })
+
+    const result = await api.getAnnouncements()
+
+    expect(fetch).toHaveBeenCalledWith(`${FAKE_URL}?action=getAnnouncements`)
+    expect(result).toEqual(mockData)
+  })
+})
+
+describe('api.saveAnnouncement', () => {
+  it('POSTs with action=saveAnnouncement, admin_token and fields', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: 'ok', data: { id: 'an1' } }),
+    })
+
+    await api.saveAnnouncement('tok', { title: 'Hi', body: '', link_url: '', link_label: '', pinned: true, expires_at: '2026-07-10' })
+
+    expect(fetch).toHaveBeenCalledWith(
+      `${FAKE_URL}?action=saveAnnouncement`,
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          admin_token: 'tok',
+          title: 'Hi', body: '', link_url: '', link_label: '', pinned: true, expires_at: '2026-07-10',
+        }),
+      })
+    )
+  })
+})
+
+describe('api.deleteAnnouncement', () => {
+  it('POSTs with action=deleteAnnouncement, admin_token and id', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: 'ok', data: { deleted: 'a1' } }),
+    })
+
+    await api.deleteAnnouncement('tok', 'a1')
+
+    expect(fetch).toHaveBeenCalledWith(
+      `${FAKE_URL}?action=deleteAnnouncement`,
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ admin_token: 'tok', id: 'a1' }),
+      })
+    )
+  })
+})
