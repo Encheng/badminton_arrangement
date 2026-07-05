@@ -206,6 +206,9 @@ describe('announcement optimistic actions', () => {
     const store = useAppStore()
     store.setAdminToken('secret')
     api.saveAnnouncement.mockResolvedValueOnce({ id: 'an123' })
+    api.getAnnouncements.mockResolvedValue([
+      { id: 'an123', title: 'Hello', body: '', link_url: '', link_label: '', pinned: false, expires_at: '', created_at: '2026-07-05T00:00:00Z' },
+    ])
 
     await store.saveAnnouncementOptimistic({ title: 'Hello', body: '', link_url: '', link_label: '', pinned: false, expires_at: '' })
 

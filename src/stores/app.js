@@ -276,12 +276,9 @@ export const useAppStore = defineStore('app', () => {
     _toastTimer = setTimeout(() => { toast.value = null }, duration)
   }
 
-  /** 背景對帳：拿回伺服器產生的 id / created_at，失敗不影響樂觀狀態
-   *  用 setTimeout 讓對帳在下一個事件循環執行，不干擾當前樂觀狀態 */
+  /** 背景對帳：拿回伺服器產生的 id / created_at，失敗不影響樂觀狀態 */
   function _reconcile() {
-    setTimeout(() => {
-      refresh().catch(err => console.error('背景對帳失敗：', err))
-    }, 0)
+    refresh().catch(err => console.error('背景對帳失敗：', err))
   }
 
   // --- 樂觀更新 actions：先改本地 state，API 失敗時還原快照 ---
