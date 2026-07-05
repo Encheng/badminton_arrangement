@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '../services/api.js'
 import { parseVideoPlayers } from '../utils/videos.js'
+import { getTodayStr } from '../utils/date.js'
 
 /** 樂觀更新產生、尚未經伺服器確認的暫時 id */
 export function isTempId(id) {
@@ -17,6 +18,7 @@ export const useAppStore = defineStore('app', () => {
   const members  = ref([])
   const sessions = ref([])
   const videos   = ref([])
+  const announcements = ref([])
   const loading  = ref(true)
   const toast    = ref(null) // { id, message, type: 'success' | 'error' | 'info' }
   const _token   = ref(localStorage.getItem('admin_token') || null)
@@ -68,6 +70,18 @@ export const useAppStore = defineStore('app', () => {
       .filter(v => parseVideoPlayers(v.title).some(p => p.toLowerCase() === target))
       .sort((a, b) => b.session_date.localeCompare(a.session_date))
   })
+
+  const activeAnnouncements = computed(() => {
+    const today = getTodayStr()
+    return announcements.value
+      .filter(a => !a.expires_at || a.expires_at >= today)
+      .sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+        return (b.created_at || '').localeCompare(a.created_at || '')
+      })
+  })
+
+  const latestAnnouncement = computed(() => activeAnnouncements.value[0] ?? null)
 
   function setAdminToken(token) {
     _token.value = token
@@ -169,6 +183,7 @@ export const useAppStore = defineStore('app', () => {
         members:  members.value,
         sessions: sessions.value,
         videos:   videos.value,
+        announcements: announcements.value,
         savedAt:  Date.now(),
       }))
     } catch (err) {
@@ -178,12 +193,16 @@ export const useAppStore = defineStore('app', () => {
 
   async function _fetchAll() {
     const epochAtStart = _epoch
-    const [cfg, mems, sess, vids] = await Promise.all([
+    const [cfg, mems, sess, vids, anns] = await Promise.all([
       api.getConfig(),
       api.getMembers(),
       api.getSessions(),
       api.getVideos().catch(err => {
         console.error('Videos fetch failed:', err)
+        return []
+      }),
+      api.getAnnouncements().catch(err => {
+        console.error('Announcements fetch failed:', err)
         return []
       }),
     ])
@@ -197,6 +216,7 @@ export const useAppStore = defineStore('app', () => {
     members.value  = mems
     sessions.value = sess.filter(s => !_isTombstoned(s.session_id))
     videos.value   = vids
+    announcements.value = anns
     _saveCache()
   }
 
@@ -208,6 +228,7 @@ export const useAppStore = defineStore('app', () => {
       members.value  = cached.members  ?? []
       sessions.value = (cached.sessions ?? []).filter(s => !_isTombstoned(s.session_id))
       videos.value   = cached.videos   ?? []
+      announcements.value = cached.announcements ?? []
       loading.value  = false
       // stale-while-revalidate：背景向 GAS 取最新資料
       try {
@@ -329,5 +350,5 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  return { config, members, sessions, videos, loading, toast, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, videosByMember, setAdminToken, clearAdminToken, init, refresh, showToast, saveSessionOptimistic, deleteSessionOptimistic, toggleMemberActiveOptimistic, addMemberOptimistic }
+  return { config, members, sessions, videos, announcements, loading, toast, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, videosByMember, activeAnnouncements, latestAnnouncement, setAdminToken, clearAdminToken, init, refresh, showToast, saveSessionOptimistic, deleteSessionOptimistic, toggleMemberActiveOptimistic, addMemberOptimistic }
 })

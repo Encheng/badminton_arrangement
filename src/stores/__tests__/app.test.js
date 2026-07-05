@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAppStore } from '../app.js'
+import { api } from '../../services/api.js'
 
 vi.mock('../../services/api.js', () => ({
   api: {
@@ -20,6 +21,9 @@ vi.mock('../../services/api.js', () => ({
       { video_id: 'v2', session_date: '2026-04-12', match_no: 2, title: '20260412 Peter 2', published_at: '2026-04-13T00:00:00Z' },
       { video_id: 'v3', session_date: '2026-04-05', match_no: 1, title: '20260405 Peter 1', published_at: '2026-04-06T00:00:00Z' },
     ]),
+    getAnnouncements:   vi.fn().mockResolvedValue([]),
+    saveAnnouncement:   vi.fn().mockResolvedValue({ id: 'an1' }),
+    deleteAnnouncement: vi.fn().mockResolvedValue({ deleted: 'a1' }),
   },
 }))
 
@@ -124,5 +128,39 @@ describe('useAppStore', () => {
       { video_id: 'a', session_date: '2026-04-05', match_no: 1, title: '20260405 Peter Sandy 1' },
     ]
     expect(store.videosByMember('  Peter ').map(v => v.video_id)).toEqual(['a'])
+  })
+})
+
+describe('activeAnnouncements', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-05T12:00:00Z'))
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('excludes expired, keeps today/non-expiring, sorts pinned then newest', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'a1', title: 'expired', body: '', link_url: '', link_label: '', pinned: false, expires_at: '2026-07-04', created_at: '2026-07-01T00:00:00Z' },
+      { id: 'a2', title: 'today',   body: '', link_url: '', link_label: '', pinned: false, expires_at: '2026-07-05', created_at: '2026-07-02T00:00:00Z' },
+      { id: 'a3', title: 'forever', body: '', link_url: '', link_label: '', pinned: false, expires_at: '',           created_at: '2026-07-03T00:00:00Z' },
+      { id: 'a4', title: 'pinned',  body: '', link_url: '', link_label: '', pinned: true,  expires_at: '',           created_at: '2026-07-01T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+
+    expect(store.activeAnnouncements.map(a => a.id)).toEqual(['a4', 'a3', 'a2'])
+    expect(store.latestAnnouncement.id).toBe('a4')
+  })
+
+  it('latestAnnouncement is null when none active', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'a1', title: 'expired', body: '', link_url: '', link_label: '', pinned: false, expires_at: '2026-07-01', created_at: '2026-07-01T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+
+    expect(store.activeAnnouncements).toHaveLength(0)
+    expect(store.latestAnnouncement).toBeNull()
   })
 })
