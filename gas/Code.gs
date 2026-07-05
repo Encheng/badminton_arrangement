@@ -13,6 +13,7 @@ function doGet(e) {
     else if (action === 'getMembers')  data = _getMembers(ss)
     else if (action === 'getSessions') data = _getSessions(ss)
     else if (action === 'getVideos')   data = _getVideos(ss)
+    else if (action === 'getAnnouncements') data = _getAnnouncements(ss)
     else return _json({ status: 'error', message: 'Unknown action: ' + action })
     return _json({ status: 'ok', data })
   } catch (err) {
@@ -35,6 +36,8 @@ function doPost(e) {
     else if (action === 'saveMember')    data = _saveMember(ss, body)
     else if (action === 'promoteGuest')  data = _promoteGuest(ss, body)
     else if (action === 'demoteMember')  data = _demoteMember(ss, body)
+    else if (action === 'saveAnnouncement')   data = _saveAnnouncement(ss, body)
+    else if (action === 'deleteAnnouncement') data = _deleteAnnouncement(ss, body)
     else return _json({ status: 'error', message: 'Unknown action: ' + action })
     return _json({ status: 'ok', data })
   } catch (err) {
@@ -331,4 +334,74 @@ function _getVideos(ss) {
       if (a.session_date !== b.session_date) return b.session_date.localeCompare(a.session_date)
       return a.match_no - b.match_no
     })
+}
+
+function _createAnnouncementsSheet(ss) {
+  const sheet = ss.insertSheet('announcements')
+  sheet.appendRow(['id', 'title', 'body', 'link_url', 'link_label', 'pinned', 'expires_at', 'created_at'])
+  return sheet
+}
+
+function _getAnnouncements(ss) {
+  const sheet = ss.getSheetByName('announcements') || _createAnnouncementsSheet(ss)
+  const rows = sheet.getDataRange().getValues().slice(1)
+  return rows.map(function(r) {
+    return {
+      id:         r[0],
+      title:      r[1],
+      body:       r[2] || '',
+      link_url:   r[3] || '',
+      link_label: r[4] || '',
+      pinned:     r[5] === true || r[5] === 'TRUE',
+      expires_at: r[6] ? _formatDate(r[6]) : '',
+      created_at: String(r[7] || ''),
+    }
+  })
+}
+
+function _saveAnnouncement(ss, body) {
+  var sheet = ss.getSheetByName('announcements') || _createAnnouncementsSheet(ss)
+  var data  = sheet.getDataRange().getValues()
+
+  if (body.id) {
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === body.id) {
+        sheet.getRange(i + 1, 2).setValue(body.title || '')
+        sheet.getRange(i + 1, 3).setValue(body.body || '')
+        sheet.getRange(i + 1, 4).setValue(body.link_url || '')
+        sheet.getRange(i + 1, 5).setValue(body.link_label || '')
+        sheet.getRange(i + 1, 6).setValue(body.pinned === true)
+        sheet.getRange(i + 1, 7).setValue(body.expires_at || '')
+        return { id: body.id }
+      }
+    }
+  }
+
+  var newId = 'an' + Date.now()
+  sheet.appendRow([
+    newId,
+    body.title || '',
+    body.body || '',
+    body.link_url || '',
+    body.link_label || '',
+    body.pinned === true,
+    body.expires_at || '',
+    new Date().toISOString(),
+  ])
+  return { id: newId }
+}
+
+function _deleteAnnouncement(ss, body) {
+  var id = body.id
+  if (!id) throw new Error('Missing id')
+  var sheet = ss.getSheetByName('announcements')
+  if (!sheet) return { deleted: id }
+  var data = sheet.getDataRange().getValues()
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.deleteRow(i + 1)
+      break
+    }
+  }
+  return { deleted: id }
 }
