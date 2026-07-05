@@ -195,3 +195,45 @@ describe('unread announcements', () => {
     expect(store.hasUnreadAnnouncements).toBe(false)
   })
 })
+
+describe('announcement optimistic actions', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    import.meta.env.VITE_ADMIN_TOKEN = 'secret'
+  })
+
+  it('adds a new announcement optimistically', async () => {
+    const store = useAppStore()
+    store.setAdminToken('secret')
+    api.saveAnnouncement.mockResolvedValueOnce({ id: 'an123' })
+
+    await store.saveAnnouncementOptimistic({ title: 'Hello', body: '', link_url: '', link_label: '', pinned: false, expires_at: '' })
+
+    expect(store.announcements.some(a => a.title === 'Hello')).toBe(true)
+  })
+
+  it('rolls back a failed create', async () => {
+    const store = useAppStore()
+    store.setAdminToken('secret')
+    api.saveAnnouncement.mockRejectedValueOnce(new Error('boom'))
+
+    await expect(
+      store.saveAnnouncementOptimistic({ title: 'X', body: '', link_url: '', link_label: '', pinned: false, expires_at: '' })
+    ).rejects.toThrow('boom')
+
+    expect(store.announcements.some(a => a.title === 'X')).toBe(false)
+  })
+
+  it('deletes optimistically and rolls back on failure', async () => {
+    const store = useAppStore()
+    store.setAdminToken('secret')
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'a1', title: 'x', body: '', link_url: '', link_label: '', pinned: false, expires_at: '', created_at: '2026-07-03T00:00:00Z' },
+    ])
+    await store.init()
+
+    api.deleteAnnouncement.mockRejectedValueOnce(new Error('nope'))
+    await expect(store.deleteAnnouncementOptimistic('a1')).rejects.toThrow('nope')
+    expect(store.announcements.some(a => a.id === 'a1')).toBe(true)
+  })
+})
