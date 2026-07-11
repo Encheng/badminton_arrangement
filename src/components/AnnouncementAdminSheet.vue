@@ -52,7 +52,15 @@
 
             <label class="ann-field">
               <span class="ann-field__label">到期日</span>
-              <input v-model="form.expires_at" class="ann-field__input" type="date" />
+              <div class="ann-field__row">
+                <input v-model="form.expires_at" class="ann-field__input" type="date" />
+                <button
+                  type="button"
+                  class="ann-quick"
+                  @click="form.expires_at = comingSaturday"
+                >本週場次 {{ comingSaturdayLabel }}</button>
+              </div>
+              <span class="ann-field__hint">留空＝永久顯示；設日期則當天仍顯示、隔天自動隱藏</span>
             </label>
 
             <label class="ann-check">
@@ -75,6 +83,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { motion, AnimatePresence } from 'motion-v'
 import { X } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app.js'
+import { getComingSaturday } from '../utils/date.js'
 
 const props = defineProps({
   show:    { type: Boolean, default: false },
@@ -86,6 +95,13 @@ const store  = useAppStore()
 const saving = ref(false)
 const isEdit = computed(() => !!(props.editing && props.editing.id))
 
+// 到期日快速鈕：本週場次（本週六）。開啟表單時重算，避免跨週後過期。
+const comingSaturday = ref(getComingSaturday())
+const comingSaturdayLabel = computed(() => {
+  const [, m, d] = comingSaturday.value.split('-')
+  return `${Number(m)}/${Number(d)}`
+})
+
 const form = reactive({
   id: null, title: '', body: '', link_url: '', link_label: '', expires_at: '', pinned: false,
 })
@@ -93,6 +109,7 @@ const form = reactive({
 // 開啟時依 editing 帶入或清空表單
 watch(() => props.show, (open) => {
   if (!open) return
+  comingSaturday.value = getComingSaturday()
   const e = props.editing
   form.id         = e?.id ?? null
   form.title      = e?.title ?? ''
@@ -197,6 +214,21 @@ async function submit() {
   background: var(--surface);
   box-sizing: border-box;
 }
+.ann-field__row { display: flex; gap: 8px; align-items: stretch; }
+.ann-field__row .ann-field__input { flex: 1; }
+.ann-quick {
+  flex-shrink: 0;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--primary);
+  background: var(--surface-tinted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.ann-field__hint { font-size: 12px; color: var(--text-tertiary); line-height: 1.4; }
 .ann-check {
   display: flex;
   align-items: center;

@@ -73,15 +73,28 @@ export const useAppStore = defineStore('app', () => {
       .sort((a, b) => b.session_date.localeCompare(a.session_date))
   })
 
-  const activeAnnouncements = computed(() => {
-    const today = getTodayStr()
-    return announcements.value
-      .filter(a => !a.expires_at || a.expires_at >= today)
-      .sort((a, b) => {
-        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
-        return (b.created_at || '').localeCompare(a.created_at || '')
-      })
-  })
+  // 置頂優先 → 再依 created_at 新到舊。成員與 admin 共用同一套排序，避免順序不一致。
+  function _annSort(a, b) {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+    return (b.created_at || '').localeCompare(a.created_at || '')
+  }
+
+  function _annActive(a) {
+    return !a.expires_at || a.expires_at >= getTodayStr()
+  }
+
+  const activeAnnouncements = computed(() =>
+    announcements.value.filter(_annActive).sort(_annSort)
+  )
+
+  // admin 用：全部公告（含過期）。有效者在前、順序與成員視角一致；過期者沉到最底。
+  const sortedAnnouncements = computed(() =>
+    [...announcements.value].sort((a, b) => {
+      const aa = _annActive(a), ba = _annActive(b)
+      if (aa !== ba) return aa ? -1 : 1
+      return _annSort(a, b)
+    })
+  )
 
   const latestAnnouncement = computed(() => activeAnnouncements.value[0] ?? null)
 
@@ -413,5 +426,5 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  return { config, members, sessions, videos, announcements, loading, toast, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, videosByMember, activeAnnouncements, latestAnnouncement, hasUnreadAnnouncements, markAnnouncementsSeen, setAdminToken, clearAdminToken, init, refresh, showToast, saveSessionOptimistic, deleteSessionOptimistic, toggleMemberActiveOptimistic, addMemberOptimistic, saveAnnouncementOptimistic, deleteAnnouncementOptimistic }
+  return { config, members, sessions, videos, announcements, loading, toast, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, videosByMember, activeAnnouncements, sortedAnnouncements, latestAnnouncement, hasUnreadAnnouncements, markAnnouncementsSeen, setAdminToken, clearAdminToken, init, refresh, showToast, saveSessionOptimistic, deleteSessionOptimistic, toggleMemberActiveOptimistic, addMemberOptimistic, saveAnnouncementOptimistic, deleteAnnouncementOptimistic }
 })

@@ -264,3 +264,28 @@ describe('announcement optimistic actions', () => {
     expect(store.announcements.some(a => a.id === 'a1')).toBe(true)
   })
 })
+
+describe('sortedAnnouncements (admin view)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-05T12:00:00Z'))
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('keeps active items in member order and sinks expired to the bottom', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'exp',   title: 'expired',    body: '', link_url: '', link_label: '', pinned: false, expires_at: '2026-07-01', created_at: '2026-07-04T00:00:00Z' },
+      { id: 'a-old', title: 'active old', body: '', link_url: '', link_label: '', pinned: false, expires_at: '',           created_at: '2026-07-02T00:00:00Z' },
+      { id: 'pin',   title: 'pinned',     body: '', link_url: '', link_label: '', pinned: true,  expires_at: '',           created_at: '2026-07-01T00:00:00Z' },
+      { id: 'a-new', title: 'active new', body: '', link_url: '', link_label: '', pinned: false, expires_at: '',           created_at: '2026-07-03T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+
+    // active subset (member view): pinned first, then newest→oldest
+    expect(store.activeAnnouncements.map(a => a.id)).toEqual(['pin', 'a-new', 'a-old'])
+    // admin view: same active order first, expired sinks to the bottom
+    expect(store.sortedAnnouncements.map(a => a.id)).toEqual(['pin', 'a-new', 'a-old', 'exp'])
+  })
+})

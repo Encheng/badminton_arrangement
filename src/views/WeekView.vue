@@ -21,8 +21,6 @@
       </div>
     </motion.header>
 
-    <AnnouncementBanner />
-
     <!-- Sheet -->
     <motion.main
       class="sheet"
@@ -30,6 +28,9 @@
       :animate="{ opacity: 1, y: 0 }"
       :transition="{ duration: 0.5, ease: 'easeOut', delay: 0.12 }"
     >
+      <!-- 公告（sheet 內容最上方，避免被 sheet 上拉的圓角蓋住） -->
+      <AnnouncementBanner />
+
       <!-- 骨架屏 -->
       <div v-if="store.loading" class="skeleton-state" aria-label="載入中">
         <!-- count row skeleton -->
