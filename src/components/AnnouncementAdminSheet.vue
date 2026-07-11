@@ -207,7 +207,8 @@ async function submit() {
 .ann-field__input {
   width: 100%;
   padding: 10px 12px;
-  font-size: 14px;
+  /* 16px 以上避免 iOS Safari 點擊輸入框時自動放大畫面 */
+  font-size: 16px;
   color: var(--text-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
