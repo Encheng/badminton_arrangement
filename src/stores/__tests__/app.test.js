@@ -1,7 +1,8 @@
 // src/stores/__tests__/app.test.js
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAppStore } from '../app.js'
+import { api } from '../../services/api.js'
 
 vi.mock('../../services/api.js', () => ({
   api: {
@@ -20,6 +21,9 @@ vi.mock('../../services/api.js', () => ({
       { video_id: 'v2', session_date: '2026-04-12', match_no: 2, title: '20260412 Peter 2', published_at: '2026-04-13T00:00:00Z' },
       { video_id: 'v3', session_date: '2026-04-05', match_no: 1, title: '20260405 Peter 1', published_at: '2026-04-06T00:00:00Z' },
     ]),
+    getAnnouncements:   vi.fn().mockResolvedValue([]),
+    saveAnnouncement:   vi.fn().mockResolvedValue({ id: 'an1' }),
+    deleteAnnouncement: vi.fn().mockResolvedValue({ deleted: 'a1' }),
   },
 }))
 
@@ -124,5 +128,164 @@ describe('useAppStore', () => {
       { video_id: 'a', session_date: '2026-04-05', match_no: 1, title: '20260405 Peter Sandy 1' },
     ]
     expect(store.videosByMember('  Peter ').map(v => v.video_id)).toEqual(['a'])
+  })
+})
+
+describe('activeAnnouncements', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-05T12:00:00Z'))
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('excludes expired, keeps today/non-expiring, sorts pinned then newest', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'a1', title: 'expired', body: '', link_url: '', link_label: '', pinned: false, expires_at: '2026-07-04', created_at: '2026-07-01T00:00:00Z' },
+      { id: 'a2', title: 'today',   body: '', link_url: '', link_label: '', pinned: false, expires_at: '2026-07-05', created_at: '2026-07-02T00:00:00Z' },
+      { id: 'a3', title: 'forever', body: '', link_url: '', link_label: '', pinned: false, expires_at: '',           created_at: '2026-07-03T00:00:00Z' },
+      { id: 'a4', title: 'pinned',  body: '', link_url: '', link_label: '', pinned: true,  expires_at: '',           created_at: '2026-07-01T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+
+    expect(store.activeAnnouncements.map(a => a.id)).toEqual(['a4', 'a3', 'a2'])
+    expect(store.latestAnnouncement.id).toBe('a4')
+  })
+
+  it('latestAnnouncement is null when none active', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'a1', title: 'expired', body: '', link_url: '', link_label: '', pinned: false, expires_at: '2026-07-01', created_at: '2026-07-01T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+
+    expect(store.activeAnnouncements).toHaveLength(0)
+    expect(store.latestAnnouncement).toBeNull()
+  })
+})
+
+describe('unread announcements', () => {
+  beforeEach(() => { localStorage.clear() })
+
+  it('hasUnreadAnnouncements is true when latest newer than seen', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'a1', title: 'x', body: '', link_url: '', link_label: '', pinned: false, expires_at: '', created_at: '2026-07-03T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+    expect(store.hasUnreadAnnouncements).toBe(true)
+  })
+
+  it('markAnnouncementsSeen clears unread and persists', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'a1', title: 'x', body: '', link_url: '', link_label: '', pinned: false, expires_at: '', created_at: '2026-07-03T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+    store.markAnnouncementsSeen()
+    expect(store.hasUnreadAnnouncements).toBe(false)
+    expect(localStorage.getItem('badminton_ann_seen_v1')).toBe('2026-07-03T00:00:00Z')
+  })
+
+  it('hasUnreadAnnouncements is false when no active announcements', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([])
+    const store = useAppStore()
+    await store.init()
+    expect(store.hasUnreadAnnouncements).toBe(false)
+  })
+
+  it('unread is true for a newer non-pinned announcement even when an older pinned one is on top', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'p1', title: 'pinned old', body: '', link_url: '', link_label: '', pinned: true,  expires_at: '', created_at: '2026-07-01T00:00:00Z' },
+      { id: 'n1', title: 'new notice', body: '', link_url: '', link_label: '', pinned: false, expires_at: '', created_at: '2026-07-04T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+    // latest headline is the pinned (older) one
+    expect(store.latestAnnouncement.id).toBe('p1')
+    // but the unread dot must still be raised by the newer non-pinned one
+    expect(store.hasUnreadAnnouncements).toBe(true)
+    store.markAnnouncementsSeen()
+    expect(store.hasUnreadAnnouncements).toBe(false)
+    expect(localStorage.getItem('badminton_ann_seen_v1')).toBe('2026-07-04T00:00:00Z')
+  })
+})
+
+describe('announcement optimistic actions', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    import.meta.env.VITE_ADMIN_TOKEN = 'secret'
+  })
+
+  it('adds a new announcement optimistically', async () => {
+    const store = useAppStore()
+    store.setAdminToken('secret')
+    api.saveAnnouncement.mockResolvedValueOnce({ id: 'an123' })
+    api.getAnnouncements.mockResolvedValue([
+      { id: 'an123', title: 'Hello', body: '', link_url: '', link_label: '', pinned: false, expires_at: '', created_at: '2026-07-05T00:00:00Z' },
+    ])
+
+    await store.saveAnnouncementOptimistic({ title: 'Hello', body: '', link_url: '', link_label: '', pinned: false, expires_at: '' })
+
+    expect(store.announcements.some(a => a.title === 'Hello')).toBe(true)
+  })
+
+  it('rolls back a failed create', async () => {
+    const store = useAppStore()
+    store.setAdminToken('secret')
+    api.saveAnnouncement.mockRejectedValueOnce(new Error('boom'))
+
+    await expect(
+      store.saveAnnouncementOptimistic({ title: 'X', body: '', link_url: '', link_label: '', pinned: false, expires_at: '' })
+    ).rejects.toThrow('boom')
+
+    expect(store.announcements.some(a => a.title === 'X')).toBe(false)
+  })
+
+  it('does not flag unread for the author after creating', async () => {
+    const store = useAppStore()
+    store.setAdminToken('secret')
+    api.saveAnnouncement.mockResolvedValueOnce({ id: 'an999' })
+    await store.saveAnnouncementOptimistic({ title: 'Mine', body: '', link_url: '', link_label: '', pinned: false, expires_at: '' })
+    expect(store.hasUnreadAnnouncements).toBe(false)
+  })
+
+  it('deletes optimistically and rolls back on failure', async () => {
+    const store = useAppStore()
+    store.setAdminToken('secret')
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'a1', title: 'x', body: '', link_url: '', link_label: '', pinned: false, expires_at: '', created_at: '2026-07-03T00:00:00Z' },
+    ])
+    await store.init()
+
+    api.deleteAnnouncement.mockRejectedValueOnce(new Error('nope'))
+    await expect(store.deleteAnnouncementOptimistic('a1')).rejects.toThrow('nope')
+    expect(store.announcements.some(a => a.id === 'a1')).toBe(true)
+  })
+})
+
+describe('sortedAnnouncements (admin view)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-05T12:00:00Z'))
+  })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('keeps active items in member order and sinks expired to the bottom', async () => {
+    api.getAnnouncements.mockResolvedValueOnce([
+      { id: 'exp',   title: 'expired',    body: '', link_url: '', link_label: '', pinned: false, expires_at: '2026-07-01', created_at: '2026-07-04T00:00:00Z' },
+      { id: 'a-old', title: 'active old', body: '', link_url: '', link_label: '', pinned: false, expires_at: '',           created_at: '2026-07-02T00:00:00Z' },
+      { id: 'pin',   title: 'pinned',     body: '', link_url: '', link_label: '', pinned: true,  expires_at: '',           created_at: '2026-07-01T00:00:00Z' },
+      { id: 'a-new', title: 'active new', body: '', link_url: '', link_label: '', pinned: false, expires_at: '',           created_at: '2026-07-03T00:00:00Z' },
+    ])
+    const store = useAppStore()
+    await store.init()
+
+    // active subset (member view): pinned first, then newest→oldest
+    expect(store.activeAnnouncements.map(a => a.id)).toEqual(['pin', 'a-new', 'a-old'])
+    // admin view: same active order first, expired sinks to the bottom
+    expect(store.sortedAnnouncements.map(a => a.id)).toEqual(['pin', 'a-new', 'a-old', 'exp'])
   })
 })

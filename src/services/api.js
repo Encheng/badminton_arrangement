@@ -35,4 +35,7 @@ export const api = {
   saveMember:   (token, member)                 => gasPost('saveMember',   { admin_token: token, ...member }),
   promoteGuest: (token, guest_key, member_id)   => gasPost('promoteGuest', { admin_token: token, guest_key, member_id }),
   demoteMember: (token, member_id)              => gasPost('demoteMember', { admin_token: token, member_id }),
+  getAnnouncements:   ()             => gasGet('getAnnouncements'),
+  saveAnnouncement:   (token, a)     => gasPost('saveAnnouncement',   { admin_token: token, ...a }),
+  deleteAnnouncement: (token, id)    => gasPost('deleteAnnouncement', { admin_token: token, id }),
 }

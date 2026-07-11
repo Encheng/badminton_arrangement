@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '../services/api.js'
 import { parseVideoPlayers } from '../utils/videos.js'
+import { getTodayStr } from '../utils/date.js'
 
 /** 樂觀更新產生、尚未經伺服器確認的暫時 id */
 export function isTempId(id) {
@@ -17,6 +18,9 @@ export const useAppStore = defineStore('app', () => {
   const members  = ref([])
   const sessions = ref([])
   const videos   = ref([])
+  const announcements = ref([])
+  const ANN_SEEN_KEY = 'badminton_ann_seen_v1'
+  const _annSeenAt = ref(localStorage.getItem(ANN_SEEN_KEY) || '')
   const loading  = ref(true)
   const toast    = ref(null) // { id, message, type: 'success' | 'error' | 'info' }
   const _token   = ref(localStorage.getItem('admin_token') || null)
@@ -69,6 +73,44 @@ export const useAppStore = defineStore('app', () => {
       .sort((a, b) => b.session_date.localeCompare(a.session_date))
   })
 
+  // 置頂優先 → 再依 created_at 新到舊。成員與 admin 共用同一套排序，避免順序不一致。
+  function _annSort(a, b) {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1
+    return (b.created_at || '').localeCompare(a.created_at || '')
+  }
+
+  function _annActive(a) {
+    return !a.expires_at || a.expires_at >= getTodayStr()
+  }
+
+  const activeAnnouncements = computed(() =>
+    announcements.value.filter(_annActive).sort(_annSort)
+  )
+
+  // admin 用：全部公告（含過期）。有效者在前、順序與成員視角一致；過期者沉到最底。
+  const sortedAnnouncements = computed(() =>
+    [...announcements.value].sort((a, b) => {
+      const aa = _annActive(a), ba = _annActive(b)
+      if (aa !== ba) return aa ? -1 : 1
+      return _annSort(a, b)
+    })
+  )
+
+  const latestAnnouncement = computed(() => activeAnnouncements.value[0] ?? null)
+
+  const newestActiveCreatedAt = computed(() =>
+    activeAnnouncements.value.reduce((max, a) => {
+      const c = a.created_at || ''
+      return c > max ? c : max
+    }, '')
+  )
+
+  const hasUnreadAnnouncements = computed(() => {
+    const newest = newestActiveCreatedAt.value
+    if (!newest) return false
+    return newest > _annSeenAt.value
+  })
+
   function setAdminToken(token) {
     _token.value = token
     if (token) localStorage.setItem('admin_token', token)
@@ -77,6 +119,13 @@ export const useAppStore = defineStore('app', () => {
   function clearAdminToken() {
     _token.value = null
     localStorage.removeItem('admin_token')
+  }
+
+  function markAnnouncementsSeen() {
+    const newest = newestActiveCreatedAt.value
+    if (!newest) return
+    _annSeenAt.value = newest
+    localStorage.setItem(ANN_SEEN_KEY, _annSeenAt.value)
   }
 
   // Google Sheets 可能回傳非標準日期/時間格式，前端統一正規化
@@ -169,6 +218,7 @@ export const useAppStore = defineStore('app', () => {
         members:  members.value,
         sessions: sessions.value,
         videos:   videos.value,
+        announcements: announcements.value,
         savedAt:  Date.now(),
       }))
     } catch (err) {
@@ -178,12 +228,16 @@ export const useAppStore = defineStore('app', () => {
 
   async function _fetchAll() {
     const epochAtStart = _epoch
-    const [cfg, mems, sess, vids] = await Promise.all([
+    const [cfg, mems, sess, vids, anns] = await Promise.all([
       api.getConfig(),
       api.getMembers(),
       api.getSessions(),
       api.getVideos().catch(err => {
         console.error('Videos fetch failed:', err)
+        return []
+      }),
+      api.getAnnouncements().catch(err => {
+        console.error('Announcements fetch failed:', err)
         return []
       }),
     ])
@@ -197,6 +251,7 @@ export const useAppStore = defineStore('app', () => {
     members.value  = mems
     sessions.value = sess.filter(s => !_isTombstoned(s.session_id))
     videos.value   = vids
+    announcements.value = anns
     _saveCache()
   }
 
@@ -208,6 +263,7 @@ export const useAppStore = defineStore('app', () => {
       members.value  = cached.members  ?? []
       sessions.value = (cached.sessions ?? []).filter(s => !_isTombstoned(s.session_id))
       videos.value   = cached.videos   ?? []
+      announcements.value = cached.announcements ?? []
       loading.value  = false
       // stale-while-revalidate：背景向 GAS 取最新資料
       try {
@@ -329,5 +385,46 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  return { config, members, sessions, videos, loading, toast, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, videosByMember, setAdminToken, clearAdminToken, init, refresh, showToast, saveSessionOptimistic, deleteSessionOptimistic, toggleMemberActiveOptimistic, addMemberOptimistic }
+  async function saveAnnouncementOptimistic(ann) {
+    _epoch++
+    const snapshot = announcements.value
+    if (ann.id) {
+      announcements.value = snapshot.map(a => a.id === ann.id ? { ...a, ...ann } : a)
+    } else {
+      announcements.value = [...snapshot, {
+        ...ann,
+        id: `temp-${Date.now()}`,
+        created_at: new Date().toISOString(),
+      }]
+    }
+    _saveCache() // write-through
+    try {
+      await api.saveAnnouncement(_token.value, ann)
+      if (!ann.id) markAnnouncementsSeen()
+      _reconcile()
+    } catch (err) {
+      if (_pageUnloading) return
+      announcements.value = snapshot
+      _saveCache()
+      throw err
+    }
+  }
+
+  async function deleteAnnouncementOptimistic(id) {
+    _epoch++
+    const snapshot = announcements.value
+    announcements.value = snapshot.filter(a => a.id !== id)
+    _saveCache() // write-through
+    try {
+      await api.deleteAnnouncement(_token.value, id)
+      _reconcile()
+    } catch (err) {
+      if (_pageUnloading) return
+      announcements.value = snapshot
+      _saveCache()
+      throw err
+    }
+  }
+
+  return { config, members, sessions, videos, announcements, loading, toast, isAdmin, adminToken, activeMembers, allUniqueGuests, videosByDate, videosByMember, activeAnnouncements, sortedAnnouncements, latestAnnouncement, hasUnreadAnnouncements, markAnnouncementsSeen, setAdminToken, clearAdminToken, init, refresh, showToast, saveSessionOptimistic, deleteSessionOptimistic, toggleMemberActiveOptimistic, addMemberOptimistic, saveAnnouncementOptimistic, deleteAnnouncementOptimistic }
 })
